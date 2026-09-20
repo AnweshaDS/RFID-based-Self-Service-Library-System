@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 
 class GoogleController extends Controller
@@ -28,20 +27,17 @@ class GoogleController extends Controller
                 'email' => 'Please sign in with your official KUET email address ('.implode(' or ', $allowedDomains).').',
             ]);
         }
+    
 
-        $user = User::where('google_id', $googleUser->getId())
-            ->orWhere('email', $email)
-            ->first();
+        $user = User::where('email', $email)->first();
 
         if (! $user) {
-            $user = User::create([
-                'name' => $googleUser->getName() ?: $email,
-                'email' => $email,
-                'google_id' => $googleUser->getId(),
-                'password' => bcrypt(Str::random(32)),
-                'email_verified_at' => now(),
+            return redirect()->route('login')->withErrors([
+                'email' => 'No library account found for this email. Please contact the library desk to be registered.',
             ]);
-        } elseif (! $user->google_id) {
+        }
+
+        if (! $user->google_id) {
             $user->forceFill(['google_id' => $googleUser->getId()])->save();
         }
 

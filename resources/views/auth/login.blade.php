@@ -52,11 +52,4 @@
 
         <x-primary-button>Log in</x-primary-button>
     </form>
-
-    @if (Route::has('register'))
-        <p class="mt-6 text-center text-sm text-slate">
-            New here?
-            <a href="{{ route('register') }}" class="font-medium text-catalog-teal hover:underline">Create an account</a>
-        </p>
-    @endif
 </x-guest-layout>
