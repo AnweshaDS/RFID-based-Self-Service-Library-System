@@ -9,17 +9,28 @@ class KioskController extends Controller
 {
     // TEMPORARY: replace with a real Koha API lookup (see plan doc, "RFID → Koha Mapping").
     private array $mockPatrons = [
-        '04:A3:91:7B:22:18' => [
+        '04:B2:11:8A:92:31' => [
+            'patron_id' => '10021',
             'name' => 'Fariha Tabassum',
+            'status' => 'Active',
             'borrowed_books' => [
                 ['title' => 'Clean Code', 'due' => '2026-09-25'],
                 ['title' => 'Computer Networks', 'due' => '2026-09-29'],
             ],
+            'recent_activity' => [
+                ['action' => 'Borrowed', 'title' => 'Clean Code', 'date' => '2026-09-11'],
+                ['action' => 'Returned', 'title' => 'Operating Systems', 'date' => '2026-09-05'],
+            ],
         ],
-        '04:B2:11:8A:92:31' => [
+        '04:A3:91:7B:22:18' => [
+            'patron_id' => '10023',
             'name' => 'Anwesha Das Sreya',
+            'status' => 'Active',
             'borrowed_books' => [
                 ['title' => 'Database System Concepts', 'due' => '2026-10-01'],
+            ],
+            'recent_activity' => [
+                ['action' => 'Borrowed', 'title' => 'Database System Concepts', 'date' => '2026-09-17'],
             ],
         ],
     ];
@@ -56,7 +67,11 @@ class KioskController extends Controller
             return redirect()->route('kiosk.welcome');
         }
 
-        return view('kiosk.dashboard', ['patron' => $patron]);
+        $dueSoonCount = collect($patron['borrowed_books'])
+            ->filter(fn ($book) => now()->diffInDays(\Illuminate\Support\Carbon::parse($book['due']), false) <= 3)
+            ->count();
+
+        return view('kiosk.dashboard', ['patron' => $patron, 'dueSoonCount' => $dueSoonCount]);
     }
 
     public function logout()

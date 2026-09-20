@@ -8,7 +8,9 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="relative min-h-screen overflow-hidden bg-ink-navy font-sans text-paper antialiased">
-    <div class="scan-line" aria-hidden="true"></div>
+    @if ($scanLine)
+        <div class="scan-line" aria-hidden="true"></div>
+    @endif
 
     <div class="flex min-h-screen flex-col items-center justify-center px-8 py-12">
         <div class="mb-10 flex items-center gap-3">
@@ -16,7 +18,7 @@
             <span class="font-display text-xl">KUET Library Kiosk</span>
         </div>
 
-        <div class="w-full max-w-lg">
+        <div class="w-full {{ $maxWidth === 'max-w-2xl' ? 'max-w-2xl' : 'max-w-lg' }}">
             {{ $slot }}
         </div>
     </div>
