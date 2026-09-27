@@ -294,4 +294,30 @@ class KohaServiceTest extends TestCase
         $this->assertCount(1, $checkouts);
         $this->assertEquals(999, $checkouts[0]['item_id']);
     }
+
+        public function test_check_status_returns_true_when_koha_is_reachable(): void
+    {
+        Http::fake([
+            'http://localhost:8080/api/v1/oauth/token' => Http::response([
+                'access_token' => 'fake-access-token-123',
+            ], 200),
+        ]);
+
+        $service = new KohaService('http://localhost:8080', 'test-id', 'test-secret');
+
+        $this->assertTrue($service->checkStatus());
+    }
+
+    public function test_check_status_returns_false_when_koha_is_unreachable(): void
+    {
+        Http::fake([
+            'http://localhost:8080/api/v1/oauth/token' => Http::response([
+                'error' => 'invalid_client',
+            ], 401),
+        ]);
+
+        $service = new KohaService('http://localhost:8080', 'wrong-id', 'wrong-secret');
+
+        $this->assertFalse($service->checkStatus());
+    }
 }
