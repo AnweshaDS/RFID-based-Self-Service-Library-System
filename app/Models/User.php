@@ -5,6 +5,9 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -23,6 +26,7 @@ class User extends Authenticatable
         'email',
         'password',
         'google_id',
+        'department_id',
     ];
 
     /**
@@ -46,5 +50,34 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function department(): BelongsTo
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class);
+    }
+
+    public function assignedTasks(): HasMany
+    {
+        return $this->hasMany(TaskDelegation::class, 'assigned_to');
+    }
+
+    public function delegatedTasks(): HasMany
+    {
+        return $this->hasMany(TaskDelegation::class, 'assigned_by');
+    }
+
+    public function hasRole(string $role): bool
+    {
+        if ($this->relationLoaded('roles')) {
+            return $this->roles->contains(fn ($r) => strcasecmp($r->name, $role) === 0);
+        }
+
+        return $this->roles()->whereRaw('LOWER(name) = ?', [strtolower($role)])->exists();
     }
 }

@@ -42,4 +42,10 @@ return [
         'allowed_domains' => array_filter(explode(',', env('GOOGLE_ALLOWED_DOMAINS', 'kuet.ac.bd,stud.kuet.ac.bd'))),
     ],
 
+    'koha' => [
+        'base_url' => env('KOHA_BASE_URL', 'http://kohadev.myDNSname.org:8082'),
+        'client_id' => env('KOHA_CLIENT_ID'),
+        'client_secret' => env('KOHA_CLIENT_SECRET'),
+    ],
+
 ];

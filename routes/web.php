@@ -8,7 +8,23 @@ use App\Http\Controllers\KioskController;
 Route::prefix('kiosk')->name('kiosk.')->group(function () {
     Route::get('/', [KioskController::class, 'welcome'])->name('welcome');
     Route::post('/scan', [KioskController::class, 'scan'])->name('scan');
-    Route::get('/dashboard', [KioskController::class, 'dashboard'])->name('dashboard')->middleware('kiosk.timeout');
+
+    Route::middleware('kiosk.timeout')->group(function () {
+        Route::get('/dashboard', [KioskController::class, 'dashboard'])->name('dashboard');
+
+        Route::get('/borrow', [KioskController::class, 'showBorrow'])->name('borrow');
+        Route::post('/borrow/lookup', [KioskController::class, 'lookupBorrowItem'])->name('borrow.lookup');
+        Route::get('/borrow/confirm', [KioskController::class, 'showConfirmBorrow'])->name('borrow.confirm');
+        Route::post('/borrow/confirm', [KioskController::class, 'confirmBorrow'])->name('borrow.confirm.store');
+        Route::get('/borrow/cancel', [KioskController::class, 'cancelBorrow'])->name('borrow.cancel');
+
+        Route::get('/return', [KioskController::class, 'showReturn'])->name('return');
+        Route::post('/return/lookup', [KioskController::class, 'lookupReturnItem'])->name('return.lookup');
+        Route::get('/return/confirm', [KioskController::class, 'showConfirmReturn'])->name('return.confirm');
+        Route::post('/return/confirm', [KioskController::class, 'confirmReturn'])->name('return.confirm.store');
+        Route::get('/return/cancel', [KioskController::class, 'cancelReturn'])->name('return.cancel');
+    });
+
     Route::post('/logout', [KioskController::class, 'logout'])->name('logout');
 });
 
@@ -18,7 +34,7 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('kiosk.welcome');
 });
 
 Route::get('/dashboard', function () {

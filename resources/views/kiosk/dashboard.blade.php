@@ -1,5 +1,9 @@
 <x-kiosk-layout :scan-line="false" max-width="max-w-2xl">
     <div class="rounded-2xl bg-paper/8 p-8">
+        @if (session('status'))
+            <p class="mb-6 rounded-lg bg-catalog-teal/20 px-4 py-2.5 text-sm font-medium text-paper">{{ session('status') }}</p>
+        @endif
+
         <div class="flex items-start justify-between">
             <div>
                 <p class="text-sm text-paper/60">Welcome back,</p>
@@ -40,15 +44,25 @@
         <div class="mt-3 space-y-2">
             @forelse ($patron['borrowed_books'] as $book)
                 @php
-                    $due = \Illuminate\Support\Carbon::parse($book['due']);
-                    $isDueSoon = now()->diffInDays($due, false) <= 3;
+                    $due = !empty($book['due']) ? \Illuminate\Support\Carbon::parse($book['due']) : null;
+                    $isDueSoon = $due && now()->diffInDays($due, false) <= 3;
                 @endphp
                 <div class="flex items-center gap-3 rounded-xl bg-paper/10 px-4 py-3 text-sm">
                     <svg class="h-4 w-4 flex-shrink-0 text-paper/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-                    <span class="flex-1">{{ $book['title'] }}</span>
-                    <span class="rounded-full px-2.5 py-1 text-xs font-medium {{ $isDueSoon ? 'bg-signal-amber/15 text-signal-amber' : 'text-paper/50' }}">
-                        Due {{ $due->format('d M Y') }}
-                    </span>
+                    <div class="flex-1">
+                        <span class="block font-medium">{{ $book['title'] }}</span>
+                        @if (!empty($book['author']))
+                            <span class="block text-xs text-paper/50">by {{ $book['author'] }}</span>
+                        @endif
+                        @if (!empty($book['barcode']))
+                            <span class="block text-xs font-mono text-paper/40">Barcode: {{ $book['barcode'] }}</span>
+                        @endif
+                    </div>
+                    @if ($due)
+                        <span class="rounded-full px-2.5 py-1 text-xs font-medium {{ $isDueSoon ? 'bg-signal-amber/15 text-signal-amber' : 'text-paper/50' }}">
+                            Due {{ $due->format('d M Y') }}
+                        </span>
+                    @endif
                 </div>
             @empty
                 <p class="text-sm text-paper/50">No books currently borrowed.</p>
@@ -56,26 +70,37 @@
         </div>
 
         <div class="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <button class="flex items-center justify-center gap-2 rounded-lg bg-signal-amber px-4 py-3 text-sm font-semibold text-ink-navy transition hover:bg-signal-amber/90">
+            <a href="{{ route('kiosk.borrow') }}" class="flex items-center justify-center gap-2 rounded-lg bg-signal-amber px-4 py-3 text-sm font-semibold text-ink-navy transition hover:bg-signal-amber/90">
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Borrow a book
-            </button>
-            <button class="flex items-center justify-center gap-2 rounded-lg border border-paper/20 px-4 py-3 text-sm font-semibold text-paper transition hover:border-catalog-teal hover:text-catalog-teal">
+            </a>
+            <a href="{{ route('kiosk.return') }}" class="flex items-center justify-center gap-2 rounded-lg border border-paper/20 px-4 py-3 text-sm font-semibold text-paper transition hover:border-catalog-teal hover:text-catalog-teal">
                 <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
                 Return a book
-            </button>
+            </a>
         </div>
 
-        @if (! empty($patron['recent_activity']))
+        @if (isset($recentActivities) && count($recentActivities) > 0)
             <p class="mt-8 text-xs font-semibold uppercase tracking-wide text-paper/70">Recent activity</p>
-            <div class="mt-3 space-y-1.5">
-                @foreach ($patron['recent_activity'] as $entry)
-                    <div class="flex items-center gap-2 text-xs text-paper/90">
-                        <svg class="h-3.5 w-3.5 flex-shrink-0 text-paper/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        <span class="flex-1">{{ $entry['action'] }} - {{ $entry['title'] }}</span>
-                        <span class="text-paper/70">{{ \Illuminate\Support\Carbon::parse($entry['date'])->format('d M Y') }}</span>
+            <div class="mt-3 space-y-2">
+                @foreach ($recentActivities as $activity)
+                    <div class="flex items-center justify-between gap-3 rounded-xl bg-paper/10 px-4 py-2.5 text-xs text-paper/90">
+                        <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                            <svg class="h-3.5 w-3.5 flex-shrink-0 text-paper/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            <span class="truncate flex-1 font-medium" title="{{ $activity->message ?? $activity->action }}">
+                                {{ $activity->message ?? ucfirst(str_replace('_', ' ', $activity->action)) }}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider {{ $activity->status === 'success' ? 'bg-catalog-teal/20 text-catalog-teal' : 'bg-red-500/20 text-red-300' }}">
+                                {{ $activity->status }}
+                            </span>
+                            <span class="text-paper/50 text-[11px]">
+                                {{ $activity->created_at ? $activity->created_at->format('d M Y, H:i') : '' }}
+                            </span>
+                        </div>
                     </div>
-                @endforeach  
+                @endforeach
             </div>
         @endif
         <form method="POST" action="{{ route('kiosk.logout') }}" class="mt-8">
