@@ -72,6 +72,22 @@ class KohaService
         return $this->accessToken;
     }
 
+        /**
+     * Check whether Koha is reachable, without exposing credentials or error details.
+     *
+     * @return bool
+     */
+    public function checkStatus(): bool
+    {
+        try {
+            $this->getAccessToken(true);
+
+            return true;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
     /**
      * Find a patron by Koha cardnumber.
      *
