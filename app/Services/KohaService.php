@@ -22,19 +22,6 @@ class KohaService
         $this->clientSecret = $clientSecret ?? config('services.koha.client_secret');
     }
 
-    protected function isMockMode(): bool
-    {
-        if (config('services.koha.mock_mode') === true) {
-            return true;
-        }
-
-        if (empty($this->clientId) || empty($this->clientSecret)) {
-            return true;
-        }
-
-        return false;
-    }
-
     /**
      * Get OAuth access token from Koha.
      *
@@ -45,11 +32,6 @@ class KohaService
     public function getAccessToken(bool $forceRefresh = false): string
     {
         if ($this->accessToken && !$forceRefresh) {
-            return $this->accessToken;
-        }
-
-        if ($this->isMockMode()) {
-            $this->accessToken = 'mock-access-token';
             return $this->accessToken;
         }
 
@@ -64,7 +46,9 @@ class KohaService
         ]);
 
         if (!$response->successful() || !isset($response->json()['access_token'])) {
-            throw new Exception('Failed to obtain Koha access token.');
+            throw new Exception(
+                'Koha OAuth failed. HTTP ' . $response->status() . ': ' . $response->body()
+            );
         }
 
         $this->accessToken = (string) $response->json()['access_token'];
@@ -72,7 +56,7 @@ class KohaService
         return $this->accessToken;
     }
 
-        /**
+    /**
      * Check whether Koha is reachable, without exposing credentials or error details.
      *
      * @return bool
@@ -97,32 +81,6 @@ class KohaService
      */
     public function getPatronByCardnumber(string $cardnumber): ?array
     {
-        if ($this->isMockMode()) {
-            $card = strtoupper(trim($cardnumber));
-            if ($card === 'STU001') {
-                return [
-                    'patron_id' => 10021,
-                    'cardnumber' => 'STU001',
-                    'firstname' => 'Arif',
-                    'surname' => 'Hasan',
-                ];
-            }
-            if ($card === 'STU002') {
-                return [
-                    'patron_id' => 10022,
-                    'cardnumber' => 'STU002',
-                    'firstname' => 'Rahim',
-                    'surname' => 'Uddin',
-                ];
-            }
-            return [
-                'patron_id' => 10023,
-                'cardnumber' => $card,
-                'firstname' => 'Student',
-                'surname' => 'Patron',
-            ];
-        }
-
         $token = $this->getAccessToken();
         $response = Http::withToken($token)
             ->acceptJson()
@@ -148,6 +106,59 @@ class KohaService
     }
 
     /**
+     * Fetch biblio (title/author) for a given biblio_id.
+     *
+     * @param int $biblioId
+     * @param string $token
+     * @return array|null
+     */
+    protected function getBiblioById(int $biblioId, string $token): ?array
+    {
+        try {
+            $response = Http::withToken($token)
+                ->acceptJson()
+                ->get("{$this->baseUrl}/api/v1/biblios/{$biblioId}");
+
+            if (!$response->successful()) {
+                return null;
+            }
+
+            $biblio = $response->json();
+
+            return [
+                'title' => $biblio['title'] ?? null,
+                'author' => $biblio['author'] ?? null,
+            ];
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Normalize a raw Koha item response: fix barcode field name
+     * and attach biblio (title/author) info.
+     *
+     * @param array $item
+     * @param string $token
+     * @return array
+     */
+    protected function normalizeItem(array $item, string $token): array
+    {
+        if (empty($item['barcode']) && !empty($item['external_id'])) {
+            $item['barcode'] = $item['external_id'];
+        }
+
+        if (empty($item['biblio']['title']) && !empty($item['biblio_id'])) {
+            $biblio = $this->getBiblioById((int) $item['biblio_id'], $token);
+            if ($biblio) {
+                $item['biblio'] = $biblio;
+            }
+        }
+
+        return $item;
+    }
+
+    /**
      * Find an item by item ID.
      *
      * @param int $itemId
@@ -156,17 +167,6 @@ class KohaService
      */
     public function getItemById(int $itemId): ?array
     {
-        if ($this->isMockMode()) {
-            return [
-                'item_id' => $itemId,
-                'barcode' => 'BOOK' . sprintf('%03d', $itemId),
-                'biblio' => [
-                    'title' => 'Essentials of Physical Chemistry',
-                    'author' => 'B. S. Bahl',
-                ],
-            ];
-        }
-
         $token = $this->getAccessToken();
         $response = Http::withToken($token)
             ->acceptJson()
@@ -176,7 +176,7 @@ class KohaService
             return null;
         }
 
-        return $response->json();
+        return $this->normalizeItem($response->json(), $token);
     }
 
     /**
@@ -188,38 +188,11 @@ class KohaService
      */
     public function getItemByBarcode(string $barcode): ?array
     {
-        if ($this->isMockMode()) {
-            $code = strtoupper(trim($barcode));
-            if ($code === 'NONEXISTENT' || $code === 'UNKNOWN_BARCODE' || $code === 'UNKNOWN999') {
-                return null;
-            }
-            if ($code === 'BOOK001') {
-                return [
-                    'item_id' => 501,
-                    'barcode' => 'BOOK001',
-                    'checked_out' => false,
-                    'biblio' => [
-                        'title' => 'Essentials of Physical Chemistry',
-                        'author' => 'B. S. Bahl',
-                    ],
-                ];
-            }
-            return [
-                'item_id' => 501,
-                'barcode' => $code,
-                'checked_out' => false,
-                'biblio' => [
-                    'title' => "Library Book ({$code})",
-                    'author' => 'Author Name',
-                ],
-            ];
-        }
-
         $token = $this->getAccessToken();
         $response = Http::withToken($token)
             ->acceptJson()
             ->get("{$this->baseUrl}/api/v1/items", [
-                'q' => json_encode(['barcode' => $barcode]),
+                'q' => json_encode(['external_id' => $barcode]),
             ]);
 
         if ($response->notFound()) {
@@ -233,7 +206,7 @@ class KohaService
         $items = $response->json();
 
         if (is_array($items) && count($items) > 0) {
-            return $items[0];
+            return $this->normalizeItem($items[0], $token);
         }
 
         return null;
@@ -249,15 +222,6 @@ class KohaService
      */
     public function checkoutItem(int $patronId, int $itemId): array
     {
-        if ($this->isMockMode()) {
-            return [
-                'checkout_id' => rand(100, 999),
-                'patron_id' => $patronId,
-                'item_id' => $itemId,
-                'due_date' => now()->addDays(14)->toIso8601String(),
-            ];
-        }
-
         $token = $this->getAccessToken();
         $response = Http::withToken($token)
             ->acceptJson()
@@ -282,28 +246,6 @@ class KohaService
      */
     public function getPatronCheckouts(int $patronId): array
     {
-        if ($this->isMockMode()) {
-            if ((int) $patronId === 10021) {
-                return [
-                    [
-                        'checkout_id' => 88,
-                        'patron_id' => 10021,
-                        'item_id' => 501,
-                        'due_date' => now()->addDays(7)->toIso8601String(),
-                        'item' => [
-                            'item_id' => 501,
-                            'barcode' => 'BOOK001',
-                            'biblio' => [
-                                'title' => 'Essentials of Physical Chemistry',
-                                'author' => 'B. S. Bahl',
-                            ],
-                        ],
-                    ],
-                ];
-            }
-            return [];
-        }
-
         $token = $this->getAccessToken();
         $response = Http::withToken($token)
             ->acceptJson()
