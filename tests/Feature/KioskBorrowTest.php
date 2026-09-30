@@ -195,4 +195,21 @@ class KioskBorrowTest extends TestCase
         $response->assertSessionHasErrors(['barcode' => 'Unable to borrow this book. Please try again.']);
         $this->assertEquals([], session('kiosk_patron')['borrowed_books']);
     }
+
+    public function test_cancel_borrow_clears_session_and_redirects(): void
+    {
+        $this->createPatronSession();
+        session([
+            'kiosk_borrow_item' => [
+                'item_id' => 501,
+                'barcode' => 'BOOK001',
+                'title' => 'Clean Code',
+            ],
+        ]);
+
+        $response = $this->get(route('kiosk.borrow.cancel'));
+
+        $response->assertRedirect(route('kiosk.dashboard'));
+        $this->assertFalse(session()->has('kiosk_borrow_item'));
+    }
 }
