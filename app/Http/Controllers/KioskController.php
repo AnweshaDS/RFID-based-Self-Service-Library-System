@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
-use App\Models\RfidCard;
 use App\Services\ActivityLogService;
 use App\Services\KohaService;
 use Illuminate\Http\Request;
@@ -25,66 +24,24 @@ class KioskController extends Controller
         return view('kiosk.welcome');
     }
 
-    public function scan(Request $request)
-{
-    $request->validate(['uid' => 'required|string']);
-
-    $uid = strtoupper(trim($request->input('uid')));
-
-    $rfidCard = RfidCard::where('uid', $uid)->first();
-
-    if (! $rfidCard) {
-        $this->activityLogService->log(
-            action: 'rfid_scan',
-            status: 'failed',
-            message: 'RFID card not recognized.',
-            metadata: ['uid' => $uid]
-        );
-
-        return back()->withErrors([
-            'uid' => 'RFID card not recognized.',
-        ]);
-    }
-
-    if (! $rfidCard->active) {
-        $this->activityLogService->log(
-            action: 'rfid_scan',
-            status: 'failed',
-            message: 'This RFID card is inactive.',
-            metadata: ['uid' => $uid]
-        );
-
-        return back()->withErrors([
-            'uid' => 'This RFID card is inactive.',
-        ]);
-    }
-
-    return $this->enterWithCardnumber($rfidCard->cardnumber, 'uid', 'rfid_scan');
-}
-
-public function enterByCardnumber(Request $request)
+    public function enterByCardnumber(Request $request)
 {
     $request->validate(['cardnumber' => 'required|string']);
 
     $cardnumber = trim($request->input('cardnumber'));
 
-    return $this->enterWithCardnumber($cardnumber, 'cardnumber', 'manual_entry');
-}
-
-protected function enterWithCardnumber(string $cardnumber, string $errorField, string $logAction)
-{
     try {
         $kohaPatron = $this->kohaService->getPatronByCardnumber($cardnumber);
 
         if (! $kohaPatron) {
             $this->activityLogService->log(
-                action: $logAction,
+                action: 'manual_entry',
                 status: 'failed',
                 message: 'Patron not found.'
             );
 
             return back()->withErrors([
-                $errorField => 'Patron not found.',
+                'cardnumber' => 'Patron not found.',
             ]);
         }
 
@@ -92,13 +49,13 @@ protected function enterWithCardnumber(string $cardnumber, string $errorField, s
         $checkouts = $this->kohaService->getPatronCheckouts($patronId);
     } catch (\Throwable $e) {
         $this->activityLogService->log(
-            action: $logAction,
+            action: 'manual_entry',
             status: 'failed',
             message: 'Koha service unavailable. Please try again later.'
         );
 
         return back()->withErrors([
-            $errorField => 'Koha service unavailable. Please try again later.',
+            'cardnumber' => 'Koha service unavailable. Please try again later.',
         ]);
     }
 
@@ -126,7 +83,7 @@ protected function enterWithCardnumber(string $cardnumber, string $errorField, s
     Session::put('kiosk_last_activity', now());
 
     $this->activityLogService->log(
-        action: $logAction,
+        action: 'manual_entry',
         status: 'success',
         patronId: $patronIdStr,
         message: "Patron {$name} entered successfully."
@@ -134,6 +91,9 @@ protected function enterWithCardnumber(string $cardnumber, string $errorField, s
 
     return redirect()->route('kiosk.dashboard');
 }
+
+
+
 
     public function dashboard()
     {
@@ -334,7 +294,7 @@ protected function enterWithCardnumber(string $cardnumber, string $errorField, s
     {
         Session::forget('kiosk_borrow_item');
 
-        return redirect()->route('kiosk.dashboard');
+        return redirect()->route('kiosk.borrow');
     }
 
     public function showReturn()

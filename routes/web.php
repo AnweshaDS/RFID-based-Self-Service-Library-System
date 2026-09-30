@@ -8,7 +8,6 @@ use App\Http\Controllers\KioskController;
 
 Route::prefix('kiosk')->name('kiosk.')->group(function () {
     Route::get('/', [KioskController::class, 'welcome'])->name('welcome');
-    Route::post('/scan', [KioskController::class, 'scan'])->name('scan');
     Route::post('/enter', [KioskController::class, 'enterByCardnumber'])->name('enter');
     Route::middleware('kiosk.timeout')->group(function () {
         Route::get('/dashboard', [KioskController::class, 'dashboard'])->name('dashboard');
