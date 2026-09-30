@@ -26,100 +26,114 @@ class KioskController extends Controller
     }
 
     public function scan(Request $request)
-    {
-        $request->validate(['uid' => 'required|string']);
+{
+    $request->validate(['uid' => 'required|string']);
 
-        $uid = strtoupper(trim($request->input('uid')));
+    $uid = strtoupper(trim($request->input('uid')));
 
-        $rfidCard = RfidCard::where('uid', $uid)->first();
+    $rfidCard = RfidCard::where('uid', $uid)->first();
 
-        if (! $rfidCard) {
-            $this->activityLogService->log(
-                action: 'rfid_scan',
-                status: 'failed',
-                message: 'RFID card not recognized.',
-                metadata: ['uid' => $uid]
-            );
-
-            return back()->withErrors([
-                'uid' => 'RFID card not recognized.',
-            ]);
-        }
-
-        if (! $rfidCard->active) {
-            $this->activityLogService->log(
-                action: 'rfid_scan',
-                status: 'failed',
-                message: 'This RFID card is inactive.',
-                metadata: ['uid' => $uid]
-            );
-
-            return back()->withErrors([
-                'uid' => 'This RFID card is inactive.',
-            ]);
-        }
-
-        try {
-            $kohaPatron = $this->kohaService->getPatronByCardnumber($rfidCard->cardnumber);
-
-            if (! $kohaPatron) {
-                $this->activityLogService->log(
-                    action: 'rfid_scan',
-                    status: 'failed',
-                    message: 'Patron not found.'
-                );
-
-                return back()->withErrors([
-                    'uid' => 'Patron not found.',
-                ]);
-            }
-
-            $patronId = (int) ($kohaPatron['patron_id'] ?? 0);
-            $checkouts = $this->kohaService->getPatronCheckouts($patronId);
-        } catch (\Throwable $e) {
-            $this->activityLogService->log(
-                action: 'rfid_scan',
-                status: 'failed',
-                message: 'Koha service unavailable. Please try again later.'
-            );
-
-            return back()->withErrors([
-                'uid' => 'Koha service unavailable. Please try again later.',
-            ]);
-        }
-
-        $firstname = $kohaPatron['firstname'] ?? '';
-        $surname = $kohaPatron['surname'] ?? '';
-        $name = trim("{$firstname} {$surname}");
-        if (empty($name)) {
-            $name = $kohaPatron['cardnumber'] ?? 'Patron';
-        }
-
-        $borrowedBooks = $this->formatCheckouts($checkouts);
-
-        $patronIdStr = (string) ($kohaPatron['patron_id'] ?? $kohaPatron['cardnumber'] ?? '');
-
-        $patron = [
-            'patron_id' => $patronIdStr,
-            'cardnumber' => $kohaPatron['cardnumber'] ?? '',
-            'name' => $name,
-            'status' => 'Active',
-            'borrowed_books' => $borrowedBooks,
-            'recent_activity' => [],
-        ];
-
-        Session::put('kiosk_patron', $patron);
-        Session::put('kiosk_last_activity', now());
-
+    if (! $rfidCard) {
         $this->activityLogService->log(
             action: 'rfid_scan',
-            status: 'success',
-            patronId: $patronIdStr,
-            message: "RFID card scanned successfully for patron {$name}."
+            status: 'failed',
+            message: 'RFID card not recognized.',
+            metadata: ['uid' => $uid]
         );
 
-        return redirect()->route('kiosk.dashboard');
+        return back()->withErrors([
+            'uid' => 'RFID card not recognized.',
+        ]);
     }
+
+    if (! $rfidCard->active) {
+        $this->activityLogService->log(
+            action: 'rfid_scan',
+            status: 'failed',
+            message: 'This RFID card is inactive.',
+            metadata: ['uid' => $uid]
+        );
+
+        return back()->withErrors([
+            'uid' => 'This RFID card is inactive.',
+        ]);
+    }
+
+    return $this->enterWithCardnumber($rfidCard->cardnumber, 'uid', 'rfid_scan');
+}
+
+public function enterByCardnumber(Request $request)
+{
+    $request->validate(['cardnumber' => 'required|string']);
+
+    $cardnumber = trim($request->input('cardnumber'));
+
+    return $this->enterWithCardnumber($cardnumber, 'cardnumber', 'manual_entry');
+}
+
+protected function enterWithCardnumber(string $cardnumber, string $errorField, string $logAction)
+{
+    try {
+        $kohaPatron = $this->kohaService->getPatronByCardnumber($cardnumber);
+
+        if (! $kohaPatron) {
+            $this->activityLogService->log(
+                action: $logAction,
+                status: 'failed',
+                message: 'Patron not found.'
+            );
+
+            return back()->withErrors([
+                $errorField => 'Patron not found.',
+            ]);
+        }
+
+        $patronId = (int) ($kohaPatron['patron_id'] ?? 0);
+        $checkouts = $this->kohaService->getPatronCheckouts($patronId);
+    } catch (\Throwable $e) {
+        $this->activityLogService->log(
+            action: $logAction,
+            status: 'failed',
+            message: 'Koha service unavailable. Please try again later.'
+        );
+
+        return back()->withErrors([
+            $errorField => 'Koha service unavailable. Please try again later.',
+        ]);
+    }
+
+    $firstname = $kohaPatron['firstname'] ?? '';
+    $surname = $kohaPatron['surname'] ?? '';
+    $name = trim("{$firstname} {$surname}");
+    if (empty($name)) {
+        $name = $kohaPatron['cardnumber'] ?? 'Patron';
+    }
+
+    $borrowedBooks = $this->formatCheckouts($checkouts);
+
+    $patronIdStr = (string) ($kohaPatron['patron_id'] ?? $kohaPatron['cardnumber'] ?? '');
+
+    $patron = [
+        'patron_id' => $patronIdStr,
+        'cardnumber' => $kohaPatron['cardnumber'] ?? '',
+        'name' => $name,
+        'status' => 'Active',
+        'borrowed_books' => $borrowedBooks,
+        'recent_activity' => [],
+    ];
+
+    Session::put('kiosk_patron', $patron);
+    Session::put('kiosk_last_activity', now());
+
+    $this->activityLogService->log(
+        action: $logAction,
+        status: 'success',
+        patronId: $patronIdStr,
+        message: "Patron {$name} entered successfully."
+    );
+
+    return redirect()->route('kiosk.dashboard');
+}
 
     public function dashboard()
     {
