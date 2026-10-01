@@ -72,6 +72,39 @@ class KohaService
         }
     }
 
+        /**
+     * Check a staff member's login credentials against Koha.
+     *
+     * Returns the patron's identifiers when valid, or null when wrong. Throws
+     * when Koha itself cannot be reached, so the caller can tell "wrong
+     * password" apart from "system down".
+     *
+     * @return array|null
+     * @throws Exception
+     */
+    public function validatePatronPassword(string $identifier, string $password): ?array
+    {
+        $token = $this->getAccessToken();
+        $response = Http::withToken($token)
+            ->acceptJson()
+            ->post("{$this->baseUrl}/api/v1/auth/password/validation", [
+                'identifier' => $identifier,
+                'password' => $password,
+            ]);
+
+        if ($response->status() === 400) {
+            return null;
+        }
+
+        if (!$response->successful()) {
+            throw new Exception('Koha password validation request failed.');
+        }
+
+        $data = $response->json();
+
+        return is_array($data) && !empty($data['patron_id']) ? $data : null;
+    }
+
     /**
      * Find a patron by Koha cardnumber.
      *
