@@ -21,6 +21,12 @@
                             {{ __('Admin Dashboard') }}
                         </x-nav-link>
                     @endif
+
+                    @if (Auth::user() && Auth::user()->roles->isNotEmpty())
+                        <x-nav-link :href="route('my-tasks')" :active="request()->routeIs('my-tasks')">
+                            {{ __('My Tasks') }}
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
