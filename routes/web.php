@@ -46,4 +46,9 @@ Route::middleware(['auth', 'role:Admin,Librarian'])->prefix('admin')->name('admi
     Route::get('/', [AdminController::class, 'index'])->name('dashboard');
 });
 
+Route::prefix('patron')->name('patron.')->group(function () {
+    Route::get('/login', [\App\Http\Controllers\PatronController::class, 'showLogin'])->name('login');
+    Route::post('/login', [\App\Http\Controllers\PatronController::class, 'login'])->name('login.submit');
+});
+
 require __DIR__.'/auth.php';
