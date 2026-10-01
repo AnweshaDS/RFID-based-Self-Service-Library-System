@@ -3,7 +3,6 @@
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\KioskController;
 
 Route::prefix('kiosk')->name('kiosk.')->group(function () {
@@ -26,11 +25,6 @@ Route::prefix('kiosk')->name('kiosk.')->group(function () {
     });
 
     Route::post('/logout', [KioskController::class, 'logout'])->name('logout');
-});
-
-Route::middleware('guest')->group(function () {
-    Route::get('/auth/google/redirect', [GoogleController::class, 'redirect'])->name('auth.google.redirect');
-    Route::get('/auth/google/callback', [GoogleController::class, 'callback'])->name('auth.google.callback');
 });
 
 Route::get('/', function () {
