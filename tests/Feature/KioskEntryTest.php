@@ -2,12 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Models\RfidCard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
-class KioskScanTest extends TestCase
+class KioskEntryTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -21,7 +20,7 @@ class KioskScanTest extends TestCase
         $this->seed();
     }
 
-    public function test_valid_rfid_scan_redirects_to_dashboard_and_stores_patron_with_checkouts(): void
+    public function test_valid_cardnumber_entry_redirects_to_dashboard_and_stores_patron_with_checkouts(): void
     {
         Http::fake([
             '*/api/v1/oauth/token' => Http::response([
@@ -52,8 +51,8 @@ class KioskScanTest extends TestCase
             ], 200),
         ]);
 
-        $response = $this->post(route('kiosk.scan'), [
-            'uid' => '04:b2:11:8a:92:31',
+        $response = $this->post(route('kiosk.enter'), [
+            'cardnumber' => 'STU001',
         ]);
 
         $response->assertRedirect(route('kiosk.dashboard'));
@@ -68,7 +67,6 @@ class KioskScanTest extends TestCase
         $this->assertEquals('Erich Gamma', $sessionPatron['borrowed_books'][0]['author']);
         $this->assertEquals('BOOK999', $sessionPatron['borrowed_books'][0]['barcode']);
 
-        // Verify dashboard renders cleanly with checkouts
         $dashboardResponse = $this->get(route('kiosk.dashboard'));
         $dashboardResponse->assertOk();
         $dashboardResponse->assertSee('Design Patterns');
@@ -92,8 +90,8 @@ class KioskScanTest extends TestCase
             '*/api/v1/checkouts*' => Http::response([], 200),
         ]);
 
-        $response = $this->post(route('kiosk.scan'), [
-            'uid' => '04:B2:11:8A:92:31',
+        $response = $this->post(route('kiosk.enter'), [
+            'cardnumber' => 'STU001',
         ]);
 
         $response->assertRedirect(route('kiosk.dashboard'));
@@ -105,7 +103,7 @@ class KioskScanTest extends TestCase
         $dashboardResponse->assertSee('No books currently borrowed.');
     }
 
-    public function test_checkout_api_failure_fails_gracefully(): void
+    public function test_checkouts_lookup_failure_fails_gracefully(): void
     {
         Http::fake([
             '*/api/v1/oauth/token' => Http::response([
@@ -124,44 +122,14 @@ class KioskScanTest extends TestCase
             ], 500),
         ]);
 
-        $response = $this->post(route('kiosk.scan'), [
-            'uid' => '04:B2:11:8A:92:31',
+        $response = $this->post(route('kiosk.enter'), [
+            'cardnumber' => 'STU001',
         ]);
 
-        $response->assertSessionHasErrors(['uid' => 'Koha service unavailable. Please try again later.']);
+        $response->assertSessionHasErrors(['cardnumber' => 'Koha service unavailable. Please try again later.']);
     }
 
-    public function test_unknown_rfid_returns_error_and_does_not_call_koha(): void
-    {
-        Http::fake();
-
-        $response = $this->post(route('kiosk.scan'), [
-            'uid' => 'FF:FF:FF:FF:FF:FF',
-        ]);
-
-        $response->assertSessionHasErrors(['uid' => 'RFID card not recognized.']);
-        Http::assertNothingSent();
-    }
-
-    public function test_inactive_rfid_returns_error_and_does_not_call_koha(): void
-    {
-        Http::fake();
-
-        RfidCard::create([
-            'uid' => '04:IN:AC:TI:VE:00',
-            'cardnumber' => 'STU999',
-            'active' => false,
-        ]);
-
-        $response = $this->post(route('kiosk.scan'), [
-            'uid' => '04:IN:AC:TI:VE:00',
-        ]);
-
-        $response->assertSessionHasErrors(['uid' => 'This RFID card is inactive.']);
-        Http::assertNothingSent();
-    }
-
-    public function test_koha_patron_not_found_fails_gracefully(): void
+    public function test_unrecognized_cardnumber_fails_gracefully(): void
     {
         Http::fake([
             '*/api/v1/oauth/token' => Http::response([
@@ -170,14 +138,14 @@ class KioskScanTest extends TestCase
             '*/api/v1/patrons*' => Http::response([], 200),
         ]);
 
-        $response = $this->post(route('kiosk.scan'), [
-            'uid' => '04:B2:11:8A:92:31',
+        $response = $this->post(route('kiosk.enter'), [
+            'cardnumber' => 'UNKNOWN999',
         ]);
 
-        $response->assertSessionHasErrors(['uid' => 'Patron not found.']);
+        $response->assertSessionHasErrors(['cardnumber' => 'Patron not found.']);
     }
 
-    public function test_koha_api_failure_fails_gracefully_without_exposing_credentials(): void
+    public function test_koha_oauth_failure_fails_gracefully_without_exposing_credentials(): void
     {
         Http::fake([
             '*/api/v1/oauth/token' => Http::response([
@@ -185,10 +153,10 @@ class KioskScanTest extends TestCase
             ], 401),
         ]);
 
-        $response = $this->post(route('kiosk.scan'), [
-            'uid' => '04:B2:11:8A:92:31',
+        $response = $this->post(route('kiosk.enter'), [
+            'cardnumber' => 'STU001',
         ]);
 
-        $response->assertSessionHasErrors(['uid' => 'Koha service unavailable. Please try again later.']);
+        $response->assertSessionHasErrors(['cardnumber' => 'Koha service unavailable. Please try again later.']);
     }
 }

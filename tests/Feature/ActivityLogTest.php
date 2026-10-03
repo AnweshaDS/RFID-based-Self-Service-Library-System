@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\ActivityLog;
-use App\Models\RfidCard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -46,7 +45,7 @@ class ActivityLogTest extends TestCase
         $this->assertEquals(['ip' => '127.0.0.1'], $log->fresh()->metadata);
     }
 
-    public function test_successful_rfid_scan_creates_activity_log(): void
+    public function test_successful_manual_entry_creates_activity_log(): void
     {
         Http::fake([
             '*/api/v1/oauth/token' => Http::response([
@@ -63,33 +62,38 @@ class ActivityLogTest extends TestCase
             '*/api/v1/checkouts*' => Http::response([], 200),
         ]);
 
-        $response = $this->post(route('kiosk.scan'), [
-            'uid' => '04:b2:11:8a:92:31',
+        $response = $this->post(route('kiosk.enter'), [
+            'cardnumber' => 'STU001',
         ]);
 
         $response->assertRedirect(route('kiosk.dashboard'));
 
         $this->assertDatabaseHas('activity_logs', [
-            'action' => 'rfid_scan',
+            'action' => 'manual_entry',
             'status' => 'success',
             'patron_id' => '10021',
         ]);
     }
 
-    public function test_unknown_rfid_creates_failed_activity_log(): void
+    public function test_unrecognized_cardnumber_creates_failed_activity_log(): void
     {
-        Http::fake();
-
-        $response = $this->post(route('kiosk.scan'), [
-            'uid' => 'FF:FF:FF:FF:FF:FF',
+        Http::fake([
+            '*/api/v1/oauth/token' => Http::response([
+                'access_token' => 'fake-token-123',
+            ], 200),
+            '*/api/v1/patrons*' => Http::response([], 200),
         ]);
 
-        $response->assertSessionHasErrors(['uid']);
+        $response = $this->post(route('kiosk.enter'), [
+            'cardnumber' => 'UNKNOWN999',
+        ]);
+
+        $response->assertSessionHasErrors(['cardnumber']);
 
         $this->assertDatabaseHas('activity_logs', [
-            'action' => 'rfid_scan',
+            'action' => 'manual_entry',
             'status' => 'failed',
-            'message' => 'RFID card not recognized.',
+            'message' => 'Patron not found.',
         ]);
     }
 
