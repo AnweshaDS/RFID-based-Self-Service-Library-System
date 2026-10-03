@@ -209,7 +209,7 @@ class KioskBorrowTest extends TestCase
 
         $response = $this->get(route('kiosk.borrow.cancel'));
 
-        $response->assertRedirect(route('kiosk.dashboard'));
+        $response->assertRedirect(route('kiosk.borrow'));
         $this->assertFalse(session()->has('kiosk_borrow_item'));
     }
 }

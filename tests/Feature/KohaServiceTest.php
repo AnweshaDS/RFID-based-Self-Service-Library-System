@@ -205,19 +205,23 @@ class KohaServiceTest extends TestCase
     }
 
     public function test_throws_exception_on_oauth_failure(): void
-    {
-        Http::fake([
-            'http://localhost:8080/api/v1/oauth/token' => Http::response([
-                'error' => 'invalid_client',
-            ], 401),
-        ]);
+{
+    Http::fake([
+        'http://localhost:8080/api/v1/oauth/token' => Http::response([
+            'error' => 'invalid_client',
+        ], 401),
+    ]);
 
-        $this->expectException(Exception::class);
-        $this->expectExceptionMessage('Failed to obtain Koha access token.');
+    $service = new KohaService('http://localhost:8080', 'wrong-id', 'wrong-secret');
 
-        $service = new KohaService('http://localhost:8080', 'wrong-id', 'wrong-secret');
+    try {
         $service->getAccessToken();
+        $this->fail('Expected exception was not thrown.');
+    } catch (Exception $e) {
+        $this->assertStringContainsString('Koha OAuth failed', $e->getMessage());
+        $this->assertStringContainsString('401', $e->getMessage());
     }
+}
 
     public function test_throws_exception_on_checkout_failure(): void
     {
