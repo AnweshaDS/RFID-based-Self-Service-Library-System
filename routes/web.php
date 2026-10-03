@@ -32,7 +32,18 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', function () {
-    return view('dashboard');
+    $user = auth()->user()->load('roles.permissions');
+
+    $permissions = $user->roles
+        ->flatMap(fn ($role) => $role->permissions)
+        ->unique('id')
+        ->sortBy('name')
+        ->values();
+
+    return view('dashboard', [
+        'roles' => $user->roles,
+        'permissions' => $permissions,
+    ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
