@@ -46,11 +46,19 @@ Route::get('/dashboard', function () {
     ]);
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+Route::middleware(['auth', 'permission:tasks.assign'])->prefix('tasks')->name('tasks.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\TaskController::class, 'index'])->name('index');
+    Route::get('/create', [\App\Http\Controllers\TaskController::class, 'create'])->name('create');
+    Route::post('/', [\App\Http\Controllers\TaskController::class, 'store'])->name('store');
+});
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::get('/my-tasks', [\App\Http\Controllers\StaffController::class, 'myTasks'])->name('my-tasks');
+    Route::patch('/my-tasks/{task}/status', [\App\Http\Controllers\TaskController::class, 'updateStatus'])->name('tasks.update-status');
+
 });
 
 Route::middleware(['auth', 'role:Admin,Librarian'])->prefix('admin')->name('admin.')->group(function () {
