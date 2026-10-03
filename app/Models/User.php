@@ -26,6 +26,7 @@ class User extends Authenticatable
         'email',
         'password',
         'google_id',
+        'koha_patron_id',
         'department_id',
     ];
 
