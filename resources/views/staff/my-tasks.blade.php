@@ -8,8 +8,8 @@
     <div class="py-12">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
 
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                <p class="text-sm font-semibold text-gray-700">Assigned to me</p>
+            <div class="bg-white border-2 border-gray-200 overflow-hidden shadow rounded-lg p-6">
+                <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">Assigned to me</p>
 
                 <div class="mt-4 space-y-2">
                     @forelse ($assignedToMe as $task)
@@ -34,8 +34,8 @@
             </div>
 
             @if ($delegatedByMe->isNotEmpty())
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                    <p class="text-sm font-semibold text-gray-700">Tasks you've delegated</p>
+                <div class="bg-white border-2 border-gray-200 overflow-hidden shadow rounded-lg p-6">
+                    <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">Tasks you've delegated</p>
 
                     <div class="mt-4 space-y-2">
                         @foreach ($delegatedByMe as $task)
