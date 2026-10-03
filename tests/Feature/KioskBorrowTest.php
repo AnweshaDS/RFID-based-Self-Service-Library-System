@@ -212,4 +212,49 @@ class KioskBorrowTest extends TestCase
         $response->assertRedirect(route('kiosk.borrow'));
         $this->assertFalse(session()->has('kiosk_borrow_item'));
     }
+
+        public function test_successful_borrow_stores_receipt_and_receipt_page_is_accessible(): void
+    {
+        Http::fake([
+            '*/api/v1/oauth/token' => Http::response(['access_token' => 'fake-token-123'], 200),
+            '*/api/v1/checkouts' => Http::response([
+                'checkout_id' => 99,
+                'patron_id' => 10021,
+                'item_id' => 501,
+                'due_date' => '2026-10-15T23:59:59Z',
+            ], 201),
+            '*/api/v1/checkouts*' => Http::response([], 200),
+        ]);
+
+        $this->withSession([
+            'kiosk_patron' => [
+                'patron_id' => '10021',
+                'cardnumber' => 'STU001',
+                'name' => 'Arif Hasan',
+                'borrowed_books' => [],
+            ],
+            'kiosk_borrow_item' => [
+                'item_id' => 501,
+                'barcode' => 'BOOK001',
+                'title' => 'Laravel Up & Running',
+            ],
+        ]);
+
+        $this->post(route('kiosk.borrow.confirm.store'));
+
+        $this->assertEquals('borrow', session('kiosk_last_receipt.type'));
+        $this->assertEquals('BOOK001', session('kiosk_last_receipt.barcode'));
+
+        $response = $this->get(route('kiosk.receipt'));
+        $response->assertOk();
+        $response->assertSee('Book Borrowed');
+        $response->assertSee('Arif Hasan');
+    }
+
+    public function test_receipt_page_redirects_to_dashboard_when_nothing_to_show(): void
+    {
+        $response = $this->get(route('kiosk.receipt'));
+
+        $response->assertRedirect(route('kiosk.dashboard'));
+    }
 }
