@@ -130,6 +130,17 @@ class KioskController extends Controller
         ]);
     }
 
+    public function showReceipt()
+{
+    $receipt = Session::get('kiosk_last_receipt');
+
+    if (! $receipt) {
+        return redirect()->route('kiosk.dashboard');
+    }
+
+    return view('kiosk.receipt', ['receipt' => $receipt]);
+}
+
     public function showBorrow()
     {
         if (! Session::has('kiosk_patron')) {
@@ -252,7 +263,7 @@ class KioskController extends Controller
         $barcode = $item['barcode'] ?? null;
 
         try {
-            $this->kohaService->checkoutItem($patronId, $itemId);
+            $checkoutResult = $this->kohaService->checkoutItem($patronId, $itemId);
         } catch (\Throwable $e) {
             $this->activityLogService->log(
                 action: 'borrow',
@@ -278,6 +289,17 @@ class KioskController extends Controller
             barcode: $barcode,
             itemId: $itemId
         );
+
+        Session::put('kiosk_last_receipt', [
+            'type' => 'borrow',
+            'patron_name' => $patron['name'] ?? '',
+            'patron_id' => $patronIdStr,
+            'title' => $item['biblio']['title'] ?? $item['title'] ?? 'Unknown title',
+            'author' => $item['biblio']['author'] ?? $item['author'] ?? null,
+            'barcode' => $barcode,
+            'due_date' => $checkoutResult['due_date'] ?? null,
+            'timestamp' => now(),
+        ]);
 
         try {
             $checkouts = $this->kohaService->getPatronCheckouts($patronId);
@@ -454,6 +476,17 @@ class KioskController extends Controller
             barcode: $barcode,
             itemId: $itemId
         );
+
+        Session::put('kiosk_last_receipt', [
+            'type' => 'return',
+            'patron_name' => $patron['name'] ?? '',
+            'patron_id' => $patronIdStr,
+            'title' => $item['biblio']['title'] ?? $item['title'] ?? 'Unknown title',
+            'author' => $item['biblio']['author'] ?? $item['author'] ?? null,
+            'barcode' => $barcode,
+            'due_date' => null,
+            'timestamp' => now(),
+        ]);
 
         return redirect()->route('kiosk.dashboard')->with('status', 'Book returned successfully!');
     }
