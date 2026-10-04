@@ -21,6 +21,18 @@
                             {{ __('Admin Dashboard') }}
                         </x-nav-link>
                     @endif
+
+                    @if (Auth::user() && Auth::user()->hasPermission('tasks.assign'))
+                        <x-nav-link :href="route('tasks.index')" :active="request()->routeIs('tasks.*')">
+                            {{ __('Manage Tasks') }}
+                        </x-nav-link>
+                    @endif
+
+                    @if (Auth::user() && Auth::user()->roles->isNotEmpty())
+                        <x-nav-link :href="route('my-tasks')" :active="request()->routeIs('my-tasks')">
+                            {{ __('My Tasks') }}
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -80,6 +92,12 @@
             @if (Auth::user() && (Auth::user()->hasRole('Admin') || Auth::user()->hasRole('Librarian')))
                 <x-responsive-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.*')">
                     {{ __('Admin Dashboard') }}
+                </x-responsive-nav-link>
+            @endif
+
+            @if (Auth::user() && Auth::user()->hasPermission('tasks.assign'))
+                <x-responsive-nav-link :href="route('tasks.index')" :active="request()->routeIs('tasks.*')">
+                    {{ __('Manage Tasks') }}
                 </x-responsive-nav-link>
             @endif
         </div>

@@ -26,6 +26,7 @@ class User extends Authenticatable
         'email',
         'password',
         'google_id',
+        'koha_patron_id',
         'department_id',
     ];
 
@@ -79,5 +80,14 @@ class User extends Authenticatable
         }
 
         return $this->roles()->whereRaw('LOWER(name) = ?', [strtolower($role)])->exists();
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        return $this->roles()
+            ->whereHas('permissions', function ($query) use ($permission) {
+                $query->whereRaw('LOWER(permissions.name) = ?', [strtolower($permission)]);
+            })
+            ->exists();
     }
 }

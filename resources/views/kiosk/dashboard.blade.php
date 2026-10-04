@@ -4,6 +4,13 @@
             <p class="mb-6 rounded-lg bg-catalog-teal/20 px-4 py-2.5 text-sm font-medium text-paper">{{ session('status') }}</p>
         @endif
 
+        @if (session()->has('kiosk_last_receipt'))
+            <a href="{{ route('kiosk.receipt') }}" class="mb-6 inline-flex items-center gap-2 rounded-lg border border-paper/20 px-4 py-2 text-sm font-medium text-paper transition hover:border-signal-amber hover:text-signal-amber">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                Print Receipt
+            </a>
+        @endif
+
         <div class="flex items-start justify-between">
             <div>
                 <p class="text-sm text-paper/60">Welcome back,</p>
