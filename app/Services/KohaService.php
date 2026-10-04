@@ -295,8 +295,24 @@ class KohaService
      * @return array
      * @throws Exception
      */
-    public function checkinItem(int $itemId): array
+        public function checkinItem(int $itemId, ?string $barcode = null): array
     {
-        throw new Exception('Koha check-in transport is not configured yet.');
+        // SIP needs the barcode; look it up if the caller didn't pass it.
+        if (empty($barcode)) {
+            $item = $this->getItemById($itemId);
+            $barcode = $item['barcode'] ?? null;
+        }
+
+        if (empty($barcode)) {
+            throw new Exception('Item barcode not found, cannot check in.');
+        }
+
+        $result = app(\App\Services\KohaSipClient::class)->checkin($barcode);
+
+        if (! $result['success']) {
+            throw new Exception($result['message']);
+        }
+
+        return $result;
     }
 }

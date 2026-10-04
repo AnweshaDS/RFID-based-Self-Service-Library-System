@@ -427,20 +427,20 @@ class KioskController extends Controller
         $itemId = (int) ($item['item_id'] ?? 0);
         $barcode = $item['barcode'] ?? null;
 
-        try {
-            $this->kohaService->checkinItem($itemId);
+                try {
+            $this->kohaService->checkinItem($itemId, $barcode);
         } catch (\Throwable $e) {
             $this->activityLogService->log(
                 action: 'return',
                 status: 'failed',
                 patronId: $patronIdStr,
-                message: 'Return processing is not connected to Koha yet.',
+                message: 'Return failed: ' . $e->getMessage(),
                 barcode: $barcode,
                 itemId: $itemId
             );
 
             return redirect()->route('kiosk.return')->withErrors([
-                'barcode' => 'Return processing is not connected to Koha yet. The book was not marked as returned.',
+                'barcode' => 'The book could not be returned: ' . $e->getMessage(),
             ]);
         }
 

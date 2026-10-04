@@ -48,4 +48,12 @@ return [
         'client_secret' => env('KOHA_CLIENT_SECRET'),
     ],
 
+        'koha_sip' => [
+        'host'        => env('KOHA_SIP_HOST', '127.0.0.1'),
+        'port'        => (int) env('KOHA_SIP_PORT', 6003),
+        'user'        => env('KOHA_SIP_USER'),
+        'password'    => env('KOHA_SIP_PASSWORD'),
+        'institution' => env('KOHA_SIP_INSTITUTION', 'CPL'),
+    ],
+
 ];
