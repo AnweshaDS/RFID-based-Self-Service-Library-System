@@ -7,6 +7,9 @@ use App\Services\ActivityLogService;
 use App\Services\KohaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
+use App\Models\RfidCard;
+use Illuminate\Support\Facades\Cache;
+use App\Models\BookTag;
 
 class KioskController extends Controller
 {
@@ -23,7 +26,77 @@ class KioskController extends Controller
     {
         return view('kiosk.welcome');
     }
+public function scan(Request $request)
+{
+    $expected = (string) config('services.kiosk.token');
+    abort_unless(
+        $expected !== '' && hash_equals($expected, (string) $request->header('X-Kiosk-Token')),
+        401
+    );
 
+    $uid = strtoupper(preg_replace('/[^0-9A-Fa-f]/', '', (string) $request->input('uid')));
+
+    if ($uid === '') {
+        return response()->json(['ok' => false, 'message' => 'Invalid UID'], 422);
+    }
+
+    $card = RfidCard::where('uid', $uid)->where('active', true)->first();
+    if ($card) {
+        Cache::put('kiosk.pending_scan', [
+            'id' => uniqid(),
+            'type' => 'patron',
+            'cardnumber' => $card->cardnumber,
+        ], 15);
+
+        return response()->json(['ok' => true, 'type' => 'patron']);
+    }
+
+    $book = BookTag::where('uid', $uid)->where('active', true)->first();
+    if ($book) {
+        Cache::put('kiosk.pending_scan', [
+            'id' => uniqid(),
+            'type' => 'book',
+            'barcode' => $book->barcode,
+        ], 15);
+
+        return response()->json(['ok' => true, 'type' => 'book']);
+    }
+
+    Cache::put('kiosk.pending_scan', [
+        'id' => uniqid(),
+        'type' => 'error',
+        'error' => 'Tag not registered or inactive.',
+    ], 15);
+
+    return response()->json(['ok' => false, 'message' => 'Tag not registered'], 404);
+}
+
+public function pollScan(Request $request)
+{
+    $wanted = $request->query('type');   // 'patron' on the welcome page, 'book' on borrow/return
+
+    $scan = Cache::get('kiosk.pending_scan');
+    if (! $scan) {
+        return response()->json(['idle' => true]);
+    }
+
+    Cache::forget('kiosk.pending_scan');   // each scan is used once
+
+    if (($scan['type'] ?? '') === 'error') {
+        return response()->json($scan);
+    }
+
+    if (($scan['type'] ?? '') !== $wanted) {
+        return response()->json([
+            'id' => $scan['id'],
+            'error' => $wanted === 'book'
+                ? 'Please scan a book, not a card.'
+                : 'Please scan your card, not a book.',
+        ]);
+    }
+
+    return response()->json($scan);
+}
     public function enterByCardnumber(Request $request)
 {
     $request->validate(['cardnumber' => 'required|string']);
@@ -48,6 +121,7 @@ class KioskController extends Controller
         $patronId = (int) ($kohaPatron['patron_id'] ?? 0);
         $checkouts = $this->kohaService->getPatronCheckouts($patronId);
     } catch (\Throwable $e) {
+\Illuminate\Support\Facades\Log::error('Koha checkout failed: ' . $e->getMessage());
         $this->activityLogService->log(
             action: 'manual_entry',
             status: 'failed',
@@ -119,9 +193,11 @@ class KioskController extends Controller
         $patronId = (string) ($patron['patron_id'] ?? '');
 
         $recentActivities = ActivityLog::where('patron_id', $patronId)
-            ->latest()
-            ->take(10)
-            ->get();
+    ->where('status', 'success')
+    ->whereIn('action', ['borrow', 'return'])
+    ->latest()
+    ->take(10)
+    ->get();
 
         return view('kiosk.dashboard', [
             'patron' => $patron,
@@ -219,6 +295,16 @@ class KioskController extends Controller
 
         return redirect()->route('kiosk.borrow.confirm');
     }
+public function showSuccess()
+{
+    $receipt = Session::get('kiosk_last_receipt');
+
+    if (! $receipt || ! Session::has('kiosk_patron')) {
+        return redirect()->route('kiosk.dashboard');
+    }
+
+    return view('kiosk.success', ['receipt' => $receipt]);
+}
 
     public function showConfirmBorrow()
     {
@@ -309,7 +395,7 @@ class KioskController extends Controller
             // Keep existing patron data if re-fetching checkouts fails
         }
 
-        return redirect()->route('kiosk.dashboard')->with('status', 'Book borrowed successfully!');
+        return redirect()->route('kiosk.success');
     }
 
     public function cancelBorrow()
@@ -487,9 +573,27 @@ class KioskController extends Controller
             'due_date' => null,
             'timestamp' => now(),
         ]);
+// Refresh the patron's borrowed list so the dashboard updates right away
+$patronId = (int) ($patron['patron_id'] ?? 0);
 
-        return redirect()->route('kiosk.dashboard')->with('status', 'Book returned successfully!');
-    }
+try {
+    $checkouts = $this->kohaService->getPatronCheckouts($patronId);
+    $patron['borrowed_books'] = $this->formatCheckouts($checkouts);
+} catch (\Throwable $e) {
+    // Koha unreachable: keep the existing list and fall through to the local removal below
+}
+
+// Safety net: make sure the returned book is gone even if Koha's list lags behind
+if (! empty($barcode)) {
+    $patron['borrowed_books'] = array_values(array_filter(
+        $patron['borrowed_books'] ?? [],
+        fn ($b) => strtolower((string) ($b['barcode'] ?? '')) !== strtolower((string) $barcode)
+    ));
+}
+
+Session::put('kiosk_patron', $patron);
+
+        return redirect()->route('kiosk.success');    }
 
     public function cancelReturn()
     {

@@ -339,6 +339,7 @@ class KohaService
         if (empty($barcode)) {
             throw new Exception('Item barcode not found, cannot check in.');
         }
+\Illuminate\Support\Facades\Log::info('SIP checkin barcode=' . json_encode($barcode) . ' item_id=' . $itemId);
 
         $result = app(\App\Services\KohaSipClient::class)->checkin($barcode);
 

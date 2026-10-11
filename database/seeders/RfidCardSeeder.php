@@ -11,28 +11,23 @@ class RfidCardSeeder extends Seeder
      * Run the database seeds.
      */
     public function run(): void
-    {
-        $mappings = [
-            [
-                'uid' => '04:B2:11:8A:92:31',
-                'cardnumber' => 'STU001',
-                'active' => true,
-            ],
-            [
-                'uid' => '04:A3:91:7B:22:18',
-                'cardnumber' => 'STU002',
-                'active' => true,
-            ],
-        ];
+{
+    $mappings = [
+        ['uid' => '53CC54AE420001', 'cardnumber' => 'STU001', 'active' => true],
+        ['uid' => '53C754AE420001', 'cardnumber' => 'STU002', 'active' => true],
+        ['uid' => '53C654AE420001', 'cardnumber' => 'STU003', 'active' => true],
+        ['uid' => '53C554AE420001', 'cardnumber' => 'T001',   'active' => true],
+    ];
 
-        foreach ($mappings as $mapping) {
-            RfidCard::updateOrCreate(
-                ['uid' => $mapping['uid']],
-                [
-                    'cardnumber' => $mapping['cardnumber'],
-                    'active' => $mapping['active'],
-                ]
-            );
-        }
+    foreach ($mappings as $mapping) {
+        RfidCard::updateOrCreate(
+            ['cardnumber' => $mapping['cardnumber']],
+            [
+                'uid' => $mapping['uid'],
+                'active' => $mapping['active'],
+            ]
+        );
     }
+}    
+        
 }

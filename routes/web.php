@@ -11,7 +11,7 @@ Route::prefix('kiosk')->name('kiosk.')->group(function () {
     Route::middleware('kiosk.timeout')->group(function () {
         Route::get('/dashboard', [KioskController::class, 'dashboard'])->name('dashboard');
         Route::get('/receipt', [KioskController::class, 'showReceipt'])->name('receipt');
-
+Route::get('/success', [KioskController::class, 'showSuccess'])->name('success');
         Route::get('/borrow', [KioskController::class, 'showBorrow'])->name('borrow');
         Route::post('/borrow/lookup', [KioskController::class, 'lookupBorrowItem'])->name('borrow.lookup');
         Route::get('/borrow/confirm', [KioskController::class, 'showConfirmBorrow'])->name('borrow.confirm');

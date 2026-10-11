@@ -14,9 +14,9 @@
             </div>
         @enderror
 
-        <div class="py-12 flex flex-col items-center justify-center relative z-0">
+        <div class="flex flex-col items-center justify-center relative z-0" style="padding:64px 0;">
             <!-- RFID scanning animation -->
-            <div class="relative w-32 h-32 mb-8 pointer-events-none">
+            <div class="relative w-32 h-32 pointer-events-none" style="margin-bottom:80px;">
                 <div class="absolute inset-0 rounded-full border-4 border-signal-amber/30 animate-ping"></div>
                 <div class="absolute inset-2 rounded-full border-4 border-signal-amber/60 animate-pulse"></div>
                 <div class="absolute inset-4 rounded-full bg-signal-amber flex items-center justify-center text-ink-navy shadow-lg shadow-signal-amber/50">
@@ -29,17 +29,14 @@
                 </div>
             </div>
 
-            <p class="text-lg font-medium text-paper">Please place the book on the RFID scanner tray</p>
-            <p class="mt-2 text-sm text-paper/50">The system will automatically detect the book and proceed.</p>
+            <p class="text-lg font-medium text-paper" style="position:relative; z-index:10;">Please place the book on the RFID scanner tray</p>
+            <p class="mt-2 text-sm text-paper/50" style="position:relative; z-index:10;">The system will automatically detect the book and proceed.</p>
         </div>
 
         <form method="POST" action="{{ route('kiosk.borrow.lookup') }}" id="rfid-form" class="mt-8 w-full max-w-sm mx-auto relative z-50">
             @csrf
             <div class="flex gap-2 bg-ink-navy/80 p-2 rounded-2xl shadow-xl border border-paper/10">
-                <input type="text" id="barcode" name="barcode" value="{{ old('barcode') }}" autofocus required autocomplete="off" 
-                       placeholder="Enter RFID tag here..."
-                       style="color: #ffffff; background-color: rgba(255,255,255,0.1);"
-                       class="block w-full rounded-xl border-0 px-4 py-3 text-lg font-bold placeholder:text-paper/40 focus:ring-2 focus:ring-signal-amber shadow-inner">
+                <x-kiosk-input name="barcode" id="barcode" :value="old('barcode')" placeholder="Enter book barcode" autofocus required />
                 <button type="submit" class="shrink-0 flex items-center justify-center rounded-xl bg-signal-amber px-6 py-3 text-sm font-bold text-ink-navy transition hover:bg-signal-amber/80 shadow-lg shadow-signal-amber/20">
                     <svg class="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     Scan
@@ -47,4 +44,5 @@
             </div>
         </form>
     </div>
+@include('kiosk.partials.book-scan')
 </x-kiosk-layout>

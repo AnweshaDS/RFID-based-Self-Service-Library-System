@@ -53,8 +53,9 @@
             @csrf
             <div>
                 <label for="barcode" class="block text-xs font-medium text-paper/70">Or Enter Book Barcode</label>
-                <input type="text" id="barcode" name="barcode" value="{{ old('barcode') }}" placeholder="e.g. BOOK001" autofocus required
-                       class="mt-1 block w-full rounded-lg border-paper/20 bg-transparent px-3.5 py-2.5 text-sm text-paper placeholder:text-paper/40 focus:border-signal-amber focus:ring-signal-amber">
+                                <div style="margin-top:4px;">
+                    <x-kiosk-input name="barcode" id="barcode" :value="old('barcode')" placeholder="e.g. BOOK001" autofocus required />
+                </div>
             </div>
 
             <button type="submit" class="w-full rounded-lg bg-signal-amber px-4 py-3 text-sm font-semibold text-ink-navy transition hover:bg-signal-amber/90">
@@ -77,4 +78,5 @@
             </div>
         </div>
     </div>
+@include('kiosk.partials.book-scan')
 </x-kiosk-layout>

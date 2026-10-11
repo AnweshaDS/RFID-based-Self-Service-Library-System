@@ -20,7 +20,11 @@ class KohaSipClient
         }
         stream_set_timeout($this->socket, 10);
 
-        $reply = $this->send("9300CN{$cfg['user']}|CO{$cfg['password']}|CP{$cfg['institution']}|");
+        try {
+    $reply = $this->send("9300CN{$cfg['user']}|CO{$cfg['password']}|CP{$cfg['institution']}|");
+} catch (RuntimeException $e) {
+    throw new RuntimeException('login step: ' . $e->getMessage());
+}
         if (!str_starts_with($reply, '941')) {
             throw new RuntimeException('SIP login failed');
         }
@@ -64,12 +68,14 @@ class KohaSipClient
 
         $this->connect();
         try {
-            $reply = $this->send(
-                "09N{$date}{$date}AP{$cfg['institution']}|AO{$cfg['institution']}|AB{$itemBarcode}|AC{$cfg['user']}|"
-            );
-        } finally {
-            $this->close();
-        }
+    $reply = $this->send(
+        "09N{$date}{$date}AP{$cfg['institution']}|AO{$cfg['institution']}|AB{$itemBarcode}|AC{$cfg['user']}|"
+    );
+} catch (RuntimeException $e) {
+    throw new RuntimeException('checkin step: ' . $e->getMessage());
+} finally {
+    $this->close();
+}
 
         $ok = str_starts_with($reply, '101');
 
