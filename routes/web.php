@@ -4,25 +4,24 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\KioskController;
+use App\Http\Controllers\KioskCartController;
 
 Route::prefix('kiosk')->name('kiosk.')->group(function () {
     Route::get('/', [KioskController::class, 'welcome'])->name('welcome');
     Route::post('/enter', [KioskController::class, 'enterByCardnumber'])->name('enter');
     Route::middleware('kiosk.timeout')->group(function () {
+Route::post('/keepalive', fn () => response()->noContent())->name('keepalive');
         Route::get('/dashboard', [KioskController::class, 'dashboard'])->name('dashboard');
         Route::get('/receipt', [KioskController::class, 'showReceipt'])->name('receipt');
 Route::get('/success', [KioskController::class, 'showSuccess'])->name('success');
-        Route::get('/borrow', [KioskController::class, 'showBorrow'])->name('borrow');
-        Route::post('/borrow/lookup', [KioskController::class, 'lookupBorrowItem'])->name('borrow.lookup');
-        Route::get('/borrow/confirm', [KioskController::class, 'showConfirmBorrow'])->name('borrow.confirm');
-        Route::post('/borrow/confirm', [KioskController::class, 'confirmBorrow'])->name('borrow.confirm.store');
-        Route::get('/borrow/cancel', [KioskController::class, 'cancelBorrow'])->name('borrow.cancel');
-
-        Route::get('/return', [KioskController::class, 'showReturn'])->name('return');
-        Route::post('/return/lookup', [KioskController::class, 'lookupReturnItem'])->name('return.lookup');
-        Route::get('/return/confirm', [KioskController::class, 'showConfirmReturn'])->name('return.confirm');
-        Route::post('/return/confirm', [KioskController::class, 'confirmReturn'])->name('return.confirm.store');
-        Route::get('/return/cancel', [KioskController::class, 'cancelReturn'])->name('return.cancel');
+            
+            foreach (['borrow', 'return'] as $mode) {
+            Route::get("/$mode", [KioskCartController::class, 'show'])->defaults('mode', $mode)->name($mode);
+            Route::post("/$mode/lookup", [KioskCartController::class, 'add'])->defaults('mode', $mode)->middleware('throttle:60,1')->name("$mode.lookup");
+            Route::post("/$mode/remove", [KioskCartController::class, 'remove'])->defaults('mode', $mode)->name("$mode.remove");
+            Route::post("/$mode/clear", [KioskCartController::class, 'clear'])->defaults('mode', $mode)->name("$mode.clear");
+            Route::post("/$mode/confirm", [KioskCartController::class, 'confirm'])->defaults('mode', $mode)->name("$mode.confirm.store");
+        }
     });
 
     Route::post('/logout', [KioskController::class, 'logout'])->name('logout');

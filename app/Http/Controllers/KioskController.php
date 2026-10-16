@@ -608,6 +608,8 @@ Session::put('kiosk_patron', $patron);
         Session::forget('kiosk_borrow_item');
         Session::forget('kiosk_return_item');
         Session::forget('kiosk_last_activity');
+        Session::forget('kiosk_last_receipt');
+Session::forget('kiosk_cart');
 
         return redirect()->route('kiosk.welcome');
     }

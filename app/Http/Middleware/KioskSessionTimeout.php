@@ -4,19 +4,24 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Session;
 
 class KioskSessionTimeout
 {
-    protected int $timeoutSeconds = 60;
-
     public function handle(Request $request, Closure $next)
     {
+        // 5 extra seconds so the on-screen countdown always finishes first
+        $limit = (int) config('kiosk.idle_timeout', 60) + 5;
         $lastActivity = Session::get('kiosk_last_activity');
 
-        if ($lastActivity && now()->diffInSeconds($lastActivity) > $this->timeoutSeconds) {
+        if ($lastActivity && now()->timestamp - Carbon::parse($lastActivity)->timestamp > $limit) {
             Session::forget('kiosk_patron');
+            Session::forget('kiosk_borrow_item');
+            Session::forget('kiosk_return_item');
+            Session::forget('kiosk_last_receipt');
             Session::forget('kiosk_last_activity');
+Session::forget('kiosk_cart');
 
             return redirect()->route('kiosk.welcome')
                 ->with('status', 'Session timed out for your security.');

@@ -7,6 +7,9 @@
     <title>{{ config('app.name', 'KUET Library') }} - Kiosk</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
+@if (session()->has('kiosk_patron'))
+    @include('kiosk.partials.idle-timer')
+@endif
 <body class="relative min-h-screen overflow-x-hidden bg-ink-navy font-sans text-paper antialiased">
     @if ($scanLine)
         <div class="scan-line" aria-hidden="true"></div>
