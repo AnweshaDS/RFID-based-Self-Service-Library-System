@@ -96,11 +96,27 @@
     </style>
 </head>
 <body>
+@php
+    $isBorrow = $receipt['type'] === 'borrow';
+    $lines = collect($receipt['items'] ?? [])->where('ok', true)->values();
+    $failedCount = count($receipt['items'] ?? []) - $lines->count();
+
+    // Older single-book receipts have no "items" list
+    if (empty($receipt['items'])) {
+        $lines = collect([[
+            'title' => $receipt['title'] ?? '',
+            'author' => $receipt['author'] ?? null,
+            'barcode' => $receipt['barcode'] ?? null,
+            'due_date' => $receipt['due_date'] ?? null,
+        ]]);
+        $failedCount = 0;
+    }
+@endphp
     <div class="receipt">
         <h1>KUET Central Library</h1>
         <p class="subtitle">Self-Service Transaction Receipt</p>
 
-        <div class="action-badge">{{ $receipt['type'] === 'borrow' ? 'Book Borrowed' : 'Book Returned' }}</div>
+        <div class="action-badge">{{ $lines->count() }} {{ \Illuminate\Support\Str::plural('Book', $lines->count()) }} {{ $isBorrow ? 'Borrowed' : 'Returned' }}</div>
 
         <div class="divider"></div>
 
@@ -119,24 +135,37 @@
 
         <div class="divider"></div>
 
-        <div class="row">
-            <span class="label">Title</span>
-            <span class="value">{{ $receipt['title'] }}</span>
-        </div>
-        @if (!empty($receipt['author']))
+                        @foreach ($lines as $line)
             <div class="row">
-                <span class="label">Author</span>
-                <span class="value">{{ $receipt['author'] }}</span>
+                <span class="label">{{ $loop->iteration }}. Title</span>
+                <span class="value">{{ $line['title'] }}</span>
             </div>
-        @endif
-        <div class="row">
-            <span class="label">Barcode</span>
-            <span class="value">{{ $receipt['barcode'] ?? 'N/A' }}</span>
-        </div>
-        @if ($receipt['type'] === 'borrow' && !empty($receipt['due_date']))
+            @if (!empty($line['author']))
+                <div class="row">
+                    <span class="label">Author</span>
+                    <span class="value">{{ $line['author'] }}</span>
+                </div>
+            @endif
             <div class="row">
-                <span class="label">Due Date</span>
-                <span class="value">{{ \Illuminate\Support\Carbon::parse($receipt['due_date'])->format('d M Y') }}</span>
+                <span class="label">Barcode</span>
+                <span class="value">{{ $line['barcode'] ?? 'N/A' }}</span>
+            </div>
+            @if ($isBorrow && !empty($line['due_date']))
+                <div class="row">
+                    <span class="label">Due Date</span>
+                    <span class="value">{{ \Illuminate\Support\Carbon::parse($line['due_date'])->format('d M Y') }}</span>
+                </div>
+            @endif
+            @if (! $loop->last)
+                <div class="divider"></div>
+            @endif
+        @endforeach
+
+        @if ($failedCount > 0)
+            <div class="divider"></div>
+            <div class="row">
+                <span class="label">Not completed</span>
+                <span class="value">{{ $failedCount }} {{ \Illuminate\Support\Str::plural('book', $failedCount) }}</span>
             </div>
         @endif
 
