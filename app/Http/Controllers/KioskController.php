@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Session;
 use App\Models\RfidCard;
 use Illuminate\Support\Facades\Cache;
 use App\Models\BookTag;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Storage;
 
 class KioskController extends Controller
 {
@@ -206,7 +208,7 @@ public function pollScan(Request $request)
         ]);
     }
 
-    public function showReceipt()
+    public function printReceipt()
 {
     $receipt = Session::get('kiosk_last_receipt');
 
@@ -215,6 +217,38 @@ public function pollScan(Request $request)
     }
 
     return view('kiosk.receipt', ['receipt' => $receipt]);
+}
+
+public function receiptPdf()
+{
+    $receipt = Session::get('kiosk_last_receipt');
+
+    if (! $receipt) {
+        abort(404);
+    }
+
+    // 58mm width, matching the Xprinter XP-58IIL. Height is a fixed, generous
+    // allowance for a prototype - DomPDF needs a fixed page size, so this isn't
+    // true continuous-roll printing. That would need raw ESC/POS output instead
+    // of a PDF, which is a bigger change for later if needed.
+    $widthMm = 58;
+    $heightMm = 120;
+    $widthPt = $widthMm * 2.8346;
+    $heightPt = $heightMm * 2.8346;
+
+    $pdf = Pdf::loadView('kiosk.receipt-pdf', ['receipt' => $receipt])
+        ->setPaper([0, 0, $widthPt, $heightPt]);
+
+    $pdf->render();
+    $output = $pdf->output();
+
+    $filename = 'receipt-' . ($receipt['patron_id'] ?? 'unknown') . '-' . now()->format('Ymd-His') . '.pdf';
+
+    Storage::disk('local')->put('receipts/' . $filename, $output);
+
+    return response($output, 200)
+        ->header('Content-Type', 'application/pdf')
+        ->header('Content-Disposition', 'inline; filename="' . $filename . '"');
 }
 
     public function showBorrow()

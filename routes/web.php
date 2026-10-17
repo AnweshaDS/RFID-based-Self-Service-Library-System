@@ -13,6 +13,7 @@ Route::prefix('kiosk')->name('kiosk.')->group(function () {
 Route::post('/keepalive', fn () => response()->noContent())->name('keepalive');
         Route::get('/dashboard', [KioskController::class, 'dashboard'])->name('dashboard');
         Route::get('/receipt', [KioskController::class, 'showReceipt'])->name('receipt');
+        Route::get('/receipt/pdf', [KioskController::class, 'receiptPdf'])->name('receipt.pdf');
 Route::get('/success', [KioskController::class, 'showSuccess'])->name('success');
             
             foreach (['borrow', 'return'] as $mode) {
