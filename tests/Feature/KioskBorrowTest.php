@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -213,7 +214,7 @@ class KioskBorrowTest extends TestCase
         $this->assertFalse(session()->has('kiosk_borrow_item'));
     }
 
-        public function test_successful_borrow_stores_receipt_and_receipt_page_is_accessible(): void
+            public function test_successful_borrow_stores_receipt_and_receipt_page_is_accessible(): void
     {
         Http::fake([
             '*/api/v1/oauth/token' => Http::response(['access_token' => 'fake-token-123'], 200),
@@ -247,8 +248,7 @@ class KioskBorrowTest extends TestCase
 
         $response = $this->get(route('kiosk.receipt'));
         $response->assertOk();
-        $response->assertSee('Book Borrowed');
-        $response->assertSee('Arif Hasan');
+        $response->assertSee('Preparing your receipt');
     }
 
     public function test_receipt_page_redirects_to_dashboard_when_nothing_to_show(): void
@@ -257,4 +257,38 @@ class KioskBorrowTest extends TestCase
 
         $response->assertRedirect(route('kiosk.dashboard'));
     }
+
+    public function test_receipt_pdf_is_generated_and_saved(): void
+    {
+        Storage::fake('local');
+
+        $this->withSession([
+            'kiosk_last_receipt' => [
+                'type' => 'borrow',
+                'patron_name' => 'Arif Hasan',
+                'patron_id' => '10021',
+                'title' => 'Laravel Up & Running',
+                'author' => null,
+                'barcode' => 'BOOK001',
+                'due_date' => '2026-10-15T23:59:59Z',
+                'timestamp' => now(),
+            ],
+        ]);
+
+        $response = $this->get(route('kiosk.receipt.pdf'));
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'application/pdf');
+
+        $files = Storage::disk('local')->allFiles('receipts');
+        $this->assertNotEmpty($files);
+    }
+
+    public function test_receipt_pdf_returns_404_when_nothing_to_show(): void
+    {
+        $response = $this->get(route('kiosk.receipt.pdf'));
+
+        $response->assertStatus(404);
+    }
+    
 }
