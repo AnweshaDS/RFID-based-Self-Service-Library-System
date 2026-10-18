@@ -27,6 +27,22 @@
                 </div>
             </div>
 
+            <div class="bg-white border-2 border-gray-200 rounded-lg shadow p-5">
+    <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">Library System</p>
+    <div class="mt-4 space-y-2">
+        <a href="{{ route('my-tasks') }}" class="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-800 transition hover:border-indigo-400 hover:bg-indigo-50">
+            <svg class="h-4 w-4 flex-shrink-0 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+            <span class="flex-1">My Tasks</span>
+        </a>
+        @can('tasks.assign')
+            <a href="{{ route('tasks.index') }}" class="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-800 transition hover:border-indigo-400 hover:bg-indigo-50">
+                <svg class="h-4 w-4 flex-shrink-0 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span class="flex-1">Assign a Task</span>
+            </a>
+        @endcan
+    </div>
+</div>
+
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
 
                 <div class="lg:col-span-1 bg-white border-2 border-gray-200 rounded-lg shadow p-5">
@@ -87,6 +103,36 @@
                                 </div>
                             </div>
                         @endif
+
+                        @if ($roleDistributionChart)
+    <div class="bg-white border-2 border-gray-200 rounded-lg shadow p-5">
+        <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">Staff by Role</p>
+        <div class="mt-3">
+            <canvas id="roleChart" height="160"></canvas>
+        </div>
+    </div>
+@endif
+
+@if ($delegationChart)
+    <div class="bg-white border-2 border-gray-200 rounded-lg shadow p-5">
+        <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">Tasks You've Delegated</p>
+        <div class="mt-3" style="max-width: 280px; margin: 0 auto;">
+            <canvas id="delegationChart"></canvas>
+        </div>
+        <div class="mt-3 flex justify-center gap-4 text-xs text-gray-600">
+            <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-yellow-400 mr-1"></span>Pending ({{ $delegationChart['pending'] }})</span>
+            <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-blue-400 mr-1"></span>In Progress ({{ $delegationChart['in_progress'] }})</span>
+            <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-green-500 mr-1"></span>Done ({{ $delegationChart['done'] }})</span>
+        </div>
+    </div>
+@endif
+
+@if ($newPatronsChart)
+    <div class="bg-white border-2 border-gray-200 rounded-lg shadow p-5 flex flex-col items-center justify-center text-center">
+        <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">New Patrons (7 days)</p>
+        <p class="mt-3 font-display text-5xl text-indigo-600">{{ $newPatronsChart['count'] }}</p>
+    </div>
+@endif
                     </div>
 
                     @if ($hasCirculationAccess && $circulationChart)
@@ -97,17 +143,6 @@
                             </div>
                         </div>
                     @endif
-
-                    <div class="bg-white border-2 border-gray-200 rounded-lg shadow p-5 flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">Your Tasks</p>
-                            <p class="mt-1 text-sm text-gray-600">See what's been assigned to you.</p>
-                        </div>
-                        <a href="{{ route('my-tasks') }}" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
-                            View My Tasks
-                        </a>
-                    </div>
-
                 </div>
             </div>
 
@@ -146,6 +181,39 @@
             },
             options: { plugins: { legend: { display: false } } },
         });
+
+        @if ($roleDistributionChart)
+    new Chart(document.getElementById('roleChart'), {
+        type: 'bar',
+        data: {
+            labels: @json($roleDistributionChart->keys()),
+            datasets: [{
+                label: 'Staff',
+                data: @json($roleDistributionChart->values()),
+                backgroundColor: '#6366f1',
+            }],
+        },
+        options: {
+            indexAxis: 'y',
+            plugins: { legend: { display: false } },
+            scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } },
+        },
+    });
+@endif
+
+@if ($delegationChart)
+    new Chart(document.getElementById('delegationChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Pending', 'In Progress', 'Done'],
+            datasets: [{
+                data: [{{ $delegationChart['pending'] }}, {{ $delegationChart['in_progress'] }}, {{ $delegationChart['done'] }}],
+                backgroundColor: ['#facc15', '#60a5fa', '#22c55e'],
+            }],
+        },
+        options: { plugins: { legend: { display: false } } },
+    });
+@endif
 
         @if ($hasCirculationAccess && $circulationChart)
             new Chart(document.getElementById('todayChart'), {

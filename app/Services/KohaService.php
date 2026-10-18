@@ -138,6 +138,38 @@ class KohaService
         return null;
     }
 
+        /**
+     * Count patrons enrolled since a given date.
+     *
+     * Uses the same query style as getPatronByCardnumber(), which is already
+     * confirmed working against your Koha instance - only the filter shape
+     * is new here, so test this one before relying on it in production.
+     *
+     * @param \DateTimeInterface $since
+     * @return int
+     * @throws Exception
+     */
+    public function countNewPatronsSince(\DateTimeInterface $since): int
+    {
+        $token = $this->getAccessToken();
+        $response = Http::withToken($token)
+            ->acceptJson()
+            ->get("{$this->baseUrl}/api/v1/patrons", [
+                'q' => json_encode(['date_enrolled' => ['-ge' => $since->format('Y-m-d')]]),
+            ]);
+
+        if (!$response->successful()) {
+            throw new Exception('Koha API request failed.');
+        }
+
+        $total = $response->header('X-Total-Count');
+        if ($total !== null) {
+            return (int) $total;
+        }
+
+        return count($response->json() ?? []);
+    }
+
     /**
      * Fetch biblio (title/author) for a given biblio_id.
      *
