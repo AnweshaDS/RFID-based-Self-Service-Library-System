@@ -19,7 +19,7 @@
         <a href="{{ route('kiosk.receipt.pdf') }}" target="_blank">Open receipt manually</a>
         <a href="{{ route('kiosk.dashboard') }}">Back to Dashboard</a>
     </div>
-        @if (session()->has('kiosk_patron'))
+   @if (session()->has('kiosk_patron'))
         @include('kiosk.partials.idle-timer')
     @endif
 </body>

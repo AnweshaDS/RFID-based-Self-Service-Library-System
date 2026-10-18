@@ -98,19 +98,7 @@
 <body>
 @php
     $isBorrow = $receipt['type'] === 'borrow';
-    $lines = collect($receipt['items'] ?? [])->where('ok', true)->values();
-    $failedCount = count($receipt['items'] ?? []) - $lines->count();
-
-    // Older single-book receipts have no "items" list
-    if (empty($receipt['items'])) {
-        $lines = collect([[
-            'title' => $receipt['title'] ?? '',
-            'author' => $receipt['author'] ?? null,
-            'barcode' => $receipt['barcode'] ?? null,
-            'due_date' => $receipt['due_date'] ?? null,
-        ]]);
-        $failedCount = 0;
-    }
+    ['lines' => $lines, 'failed' => $failedCount] = \App\Support\ReceiptLines::from($receipt);
 @endphp
     <div class="receipt">
         <h1>KUET Central Library</h1>

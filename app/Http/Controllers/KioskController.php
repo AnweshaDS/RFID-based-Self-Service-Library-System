@@ -262,12 +262,34 @@ public function receiptPdf()
     // allowance for a prototype - DomPDF needs a fixed page size, so this isn't
     // true continuous-roll printing. That would need raw ESC/POS output instead
     // of a PDF, which is a bigger change for later if needed.
-    $widthMm = 58;
-    $heightMm = 120;
+        $widthMm = 58;
+
+    ['lines' => $lines, 'failed' => $failedCount] = \App\Support\ReceiptLines::from($receipt);
+    $isBorrow = ($receipt['type'] ?? '') === 'borrow';
+
+    // DomPDF needs a fixed page size, so estimate it from the content.
+    // 62 mm covers the header, patron details and footer; each book adds its rows
+    // (long titles wrap, hence the division by 30 characters) plus its divider.
+    $mm = 62 + ($failedCount > 0 ? 6 : 0);
+
+    foreach ($lines as $line) {
+        $rows = max(1, (int) ceil(mb_strlen((string) ($line['title'] ?? '')) / 30))
+            + (empty($line['author']) ? 0 : max(1, (int) ceil(mb_strlen((string) $line['author']) / 30)))
+            + 1                                                              // barcode
+            + ($isBorrow && ! empty($line['due_date']) ? 1 : 0);             // due date
+
+        $mm += $rows * 3.6 + 3;
+    }
+
+    $heightMm = (int) ceil($mm + 8);
     $widthPt = $widthMm * 2.8346;
     $heightPt = $heightMm * 2.8346;
 
-    $pdf = Pdf::loadView('kiosk.receipt-pdf', ['receipt' => $receipt])
+    $pdf = Pdf::loadView('kiosk.receipt-pdf', [
+            'receipt' => $receipt,
+            'lines' => $lines,
+            'failedCount' => $failedCount,
+        ])
         ->setPaper([0, 0, $widthPt, $heightPt]);
 
     $pdf->render();
