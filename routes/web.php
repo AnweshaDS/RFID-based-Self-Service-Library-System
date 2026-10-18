@@ -5,6 +5,7 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\KioskController;
 use App\Http\Controllers\KioskCartController;
+use App\Http\Controllers\DashboardController;
 
 Route::prefix('kiosk')->name('kiosk.')->group(function () {
     Route::get('/', [KioskController::class, 'welcome'])->name('welcome');
@@ -33,20 +34,7 @@ Route::get('/', function () {
     return redirect()->route('kiosk.welcome');
 });
 
-Route::get('/dashboard', function () {
-    $user = auth()->user()->load('roles.permissions');
-
-    $permissions = $user->roles
-        ->flatMap(fn ($role) => $role->permissions)
-        ->unique('id')
-        ->sortBy('name')
-        ->values();
-
-    return view('dashboard', [
-        'roles' => $user->roles,
-        'permissions' => $permissions,
-    ]);
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware(['auth', 'permission:tasks.assign'])->prefix('tasks')->name('tasks.')->group(function () {
     Route::get('/', [\App\Http\Controllers\TaskController::class, 'index'])->name('index');
