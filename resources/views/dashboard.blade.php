@@ -8,6 +8,7 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
 
+            {{-- Identity card --}}
             <div class="bg-white border-2 border-gray-200 rounded-lg shadow p-6">
                 <p class="text-base text-gray-800">
                     {{ __("You're logged in as") }} <span class="font-bold">{{ Auth::user()->name }}</span>.
@@ -27,24 +28,27 @@
                 </div>
             </div>
 
+            {{-- Library System (Laravel-native links, stays separate from Koha links below) --}}
             <div class="bg-white border-2 border-gray-200 rounded-lg shadow p-5">
-    <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">Library System</p>
-    <div class="mt-4 space-y-2">
-        <a href="{{ route('my-tasks') }}" class="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-800 transition hover:border-indigo-400 hover:bg-indigo-50">
-            <svg class="h-4 w-4 flex-shrink-0 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-            <span class="flex-1">My Tasks</span>
-        </a>
-        @can('tasks.assign')
-            <a href="{{ route('tasks.index') }}" class="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-800 transition hover:border-indigo-400 hover:bg-indigo-50">
-                <svg class="h-4 w-4 flex-shrink-0 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                <span class="flex-1">Assign a Task</span>
-            </a>
-        @endcan
-    </div>
-</div>
+                <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">Library System</p>
+                <div class="mt-4 space-y-2">
+                    <a href="{{ route('my-tasks') }}" class="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-800 transition hover:border-indigo-400 hover:bg-indigo-50">
+                        <svg class="h-4 w-4 flex-shrink-0 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                        <span class="flex-1">My Tasks</span>
+                    </a>
+                    @can('tasks.assign')
+                        <a href="{{ route('tasks.index') }}" class="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-800 transition hover:border-indigo-400 hover:bg-indigo-50">
+                            <svg class="h-4 w-4 flex-shrink-0 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            <span class="flex-1">Assign a Task</span>
+                        </a>
+                    @endcan
+                </div>
+            </div>
 
+            {{-- Main area: sidebar of Koha links + charts --}}
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
 
+                {{-- Koha Quick Links sidebar --}}
                 <div class="lg:col-span-1 bg-white border-2 border-gray-200 rounded-lg shadow p-5">
                     <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">Koha Quick Links</p>
                     <p class="mt-1 text-xs text-gray-500">Opens the Koha staff interface in a new tab. You'll need to be logged into Koha separately.</p>
@@ -75,9 +79,10 @@
                     </div>
                 </div>
 
+                {{-- Charts column --}}
                 <div class="lg:col-span-3 space-y-6">
 
-                    <div class="grid grid-cols-1 {{ $hasCirculationAccess ? 'sm:grid-cols-2' : '' }} gap-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
 
                         <div class="bg-white border-2 border-gray-200 rounded-lg shadow p-5">
                             <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">My Task Status</p>
@@ -90,6 +95,15 @@
                                 <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-green-500 mr-1"></span>Done ({{ $taskChart['done'] }})</span>
                             </div>
                         </div>
+
+                        @if ($taskCompletionChart)
+                            <div class="bg-white border-2 border-gray-200 rounded-lg shadow p-5">
+                                <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">Tasks Completed - Last 14 Days</p>
+                                <div class="mt-4">
+                                    <canvas id="completionChart" height="90"></canvas>
+                                </div>
+                            </div>
+                        @endif
 
                         @if ($hasCirculationAccess && $circulationChart)
                             <div class="bg-white border-2 border-gray-200 rounded-lg shadow p-5">
@@ -105,34 +119,35 @@
                         @endif
 
                         @if ($roleDistributionChart)
-    <div class="bg-white border-2 border-gray-200 rounded-lg shadow p-5">
-        <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">Staff by Role</p>
-        <div class="mt-3">
-            <canvas id="roleChart" height="160"></canvas>
-        </div>
-    </div>
-@endif
+                            <div class="bg-white border-2 border-gray-200 rounded-lg shadow p-5">
+                                <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">Staff by Role</p>
+                                <div class="mt-3">
+                                    <canvas id="roleChart" height="160"></canvas>
+                                </div>
+                            </div>
+                        @endif
 
-@if ($delegationChart)
-    <div class="bg-white border-2 border-gray-200 rounded-lg shadow p-5">
-        <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">Tasks You've Delegated</p>
-        <div class="mt-3" style="max-width: 280px; margin: 0 auto;">
-            <canvas id="delegationChart"></canvas>
-        </div>
-        <div class="mt-3 flex justify-center gap-4 text-xs text-gray-600">
-            <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-yellow-400 mr-1"></span>Pending ({{ $delegationChart['pending'] }})</span>
-            <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-blue-400 mr-1"></span>In Progress ({{ $delegationChart['in_progress'] }})</span>
-            <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-green-500 mr-1"></span>Done ({{ $delegationChart['done'] }})</span>
-        </div>
-    </div>
-@endif
+                        @if ($delegationChart)
+                            <div class="bg-white border-2 border-gray-200 rounded-lg shadow p-5">
+                                <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">Tasks You've Delegated</p>
+                                <div class="mt-3" style="max-width: 280px; margin: 0 auto;">
+                                    <canvas id="delegationChart"></canvas>
+                                </div>
+                                <div class="mt-3 flex justify-center gap-4 text-xs text-gray-600">
+                                    <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-yellow-400 mr-1"></span>Pending ({{ $delegationChart['pending'] }})</span>
+                                    <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-blue-400 mr-1"></span>In Progress ({{ $delegationChart['in_progress'] }})</span>
+                                    <span><span class="inline-block h-2.5 w-2.5 rounded-full bg-green-500 mr-1"></span>Done ({{ $delegationChart['done'] }})</span>
+                                </div>
+                            </div>
+                        @endif
 
-@if ($newPatronsChart)
-    <div class="bg-white border-2 border-gray-200 rounded-lg shadow p-5 flex flex-col items-center justify-center text-center">
-        <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">New Patrons (7 days)</p>
-        <p class="mt-3 font-display text-5xl text-indigo-600">{{ $newPatronsChart['count'] }}</p>
-    </div>
-@endif
+                        @if ($newPatronsChart)
+                            <div class="bg-white border-2 border-gray-200 rounded-lg shadow p-5 flex flex-col items-center justify-center text-center">
+                                <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">New Patrons (7 days)</p>
+                                <p class="mt-3 font-display text-5xl text-indigo-600">{{ $newPatronsChart['count'] }}</p>
+                            </div>
+                        @endif
+
                     </div>
 
                     @if ($hasCirculationAccess && $circulationChart)
@@ -143,9 +158,11 @@
                             </div>
                         </div>
                     @endif
+
                 </div>
             </div>
 
+            {{-- Permissions summary --}}
             @if ($permissions->isNotEmpty())
                 <div class="bg-white border-2 border-gray-200 rounded-lg shadow p-6">
                     <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">What you can do</p>
@@ -182,38 +199,24 @@
             options: { plugins: { legend: { display: false } } },
         });
 
-        @if ($roleDistributionChart)
-    new Chart(document.getElementById('roleChart'), {
-        type: 'bar',
-        data: {
-            labels: @json($roleDistributionChart->keys()),
-            datasets: [{
-                label: 'Staff',
-                data: @json($roleDistributionChart->values()),
-                backgroundColor: '#6366f1',
-            }],
-        },
-        options: {
-            indexAxis: 'y',
-            plugins: { legend: { display: false } },
-            scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } },
-        },
-    });
-@endif
-
-@if ($delegationChart)
-    new Chart(document.getElementById('delegationChart'), {
-        type: 'doughnut',
-        data: {
-            labels: ['Pending', 'In Progress', 'Done'],
-            datasets: [{
-                data: [{{ $delegationChart['pending'] }}, {{ $delegationChart['in_progress'] }}, {{ $delegationChart['done'] }}],
-                backgroundColor: ['#facc15', '#60a5fa', '#22c55e'],
-            }],
-        },
-        options: { plugins: { legend: { display: false } } },
-    });
-@endif
+        @if ($taskCompletionChart)
+            new Chart(document.getElementById('completionChart'), {
+                type: 'bar',
+                data: {
+                    labels: @json($taskCompletionChart['labels']),
+                    datasets: [{
+                        label: 'Completed',
+                        data: @json($taskCompletionChart['counts']),
+                        backgroundColor: '#22c55e',
+                        borderRadius: 4,
+                    }],
+                },
+                options: {
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+                },
+            });
+        @endif
 
         @if ($hasCirculationAccess && $circulationChart)
             new Chart(document.getElementById('todayChart'), {
@@ -254,6 +257,39 @@
                 options: {
                     scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
                 },
+            });
+        @endif
+
+        @if ($roleDistributionChart)
+            new Chart(document.getElementById('roleChart'), {
+                type: 'bar',
+                data: {
+                    labels: @json($roleDistributionChart->keys()),
+                    datasets: [{
+                        label: 'Staff',
+                        data: @json($roleDistributionChart->values()),
+                        backgroundColor: '#6366f1',
+                    }],
+                },
+                options: {
+                    indexAxis: 'y',
+                    plugins: { legend: { display: false } },
+                    scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } },
+                },
+            });
+        @endif
+
+        @if ($delegationChart)
+            new Chart(document.getElementById('delegationChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Pending', 'In Progress', 'Done'],
+                    datasets: [{
+                        data: [{{ $delegationChart['pending'] }}, {{ $delegationChart['in_progress'] }}, {{ $delegationChart['done'] }}],
+                        backgroundColor: ['#facc15', '#60a5fa', '#22c55e'],
+                    }],
+                },
+                options: { plugins: { legend: { display: false } } },
             });
         @endif
     </script>

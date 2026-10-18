@@ -88,6 +88,23 @@ class DashboardController extends Controller
             }
         }
 
+                $taskCompletionChart = null;
+        if ($roleNames->isNotEmpty()) {
+            $days = collect(range(13, 0))->map(fn ($i) => now()->subDays($i)->toDateString());
+
+            $completions = TaskDelegation::where('assigned_to', $user->id)
+                ->where('status', 'done')
+                ->where('updated_at', '>=', now()->subDays(13)->startOfDay())
+                ->selectRaw('DATE(updated_at) as day, count(*) as total')
+                ->groupBy('day')
+                ->pluck('total', 'day');
+
+            $taskCompletionChart = [
+                'labels' => $days->map(fn ($d) => \Illuminate\Support\Carbon::parse($d)->format('d M'))->values(),
+                'counts' => $days->map(fn ($d) => (int) ($completions[$d] ?? 0))->values(),
+            ];
+        }
+
         return view('dashboard', [
             'roles' => $user->roles,
             'permissions' => $permissions,
@@ -99,6 +116,7 @@ class DashboardController extends Controller
             'roleDistributionChart' => $roleDistributionChart,
             'delegationChart' => $delegationChart,
             'newPatronsChart' => $newPatronsChart,
+            'taskCompletionChart' => $taskCompletionChart,
             'kohaStaffUrl' => rtrim((string) config('services.koha.staff_url'), '/'),
         ]);
     }
