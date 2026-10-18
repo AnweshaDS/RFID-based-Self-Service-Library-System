@@ -296,7 +296,7 @@ class KohaService
             ]);
 
         if (!$response->successful()) {
-            throw new Exception('Failed to checkout item in Koha.');
+                        throw new Exception('Failed to checkout item in Koha. HTTP ' . $response->status() . ': ' . $response->body());
         }
 
         return $response->json() ?? [];
@@ -380,5 +380,72 @@ class KohaService
         }
 
         return $result;
+    }
+        /**
+     * Account balance (positive = amount owed). Null when Koha does not provide it.
+     */
+    public function getPatronBalance(int $patronId): ?float
+    {
+        try {
+            $token = $this->getAccessToken();
+            $response = Http::withToken($token)
+                ->acceptJson()
+                ->get("{$this->baseUrl}/api/v1/patrons/{$patronId}/account");
+
+            if (! $response->successful()) {
+                return null;
+            }
+
+            $balance = $response->json('balance');
+
+            return is_numeric($balance) ? (float) $balance : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Asks Koha whether a checkout can be renewed under its own circulation rules.
+     *
+     * @return array{allowed: bool, reason: ?string}
+     * @throws Exception
+     */
+    public function getRenewability(int $checkoutId): array
+    {
+        $token = $this->getAccessToken();
+        $response = Http::withToken($token)
+            ->acceptJson()
+            ->get("{$this->baseUrl}/api/v1/checkouts/{$checkoutId}/allows_renewal");
+
+        if (! $response->successful()) {
+            throw new Exception('Could not check renewability in Koha.');
+        }
+
+        $data = $response->json() ?? [];
+
+        return [
+            'allowed' => (bool) ($data['allows_renewal'] ?? false),
+            'reason' => is_string($data['error'] ?? null) ? $data['error'] : null,
+        ];
+    }
+
+    /**
+     * Renews a checkout. Koha applies its own rules and returns the new due date.
+     *
+     * @throws Exception
+     */
+    public function renewCheckout(int $checkoutId): array
+    {
+        $token = $this->getAccessToken();
+        $response = Http::withToken($token)
+            ->acceptJson()
+            ->post("{$this->baseUrl}/api/v1/checkouts/{$checkoutId}/renewal");
+
+        if (! $response->successful()) {
+            $error = $response->json('error');
+            throw new Exception(is_string($error) ? $error : 'Koha refused the renewal.');
+        }
+
+        return $response->json() ?? [];
     }
 }

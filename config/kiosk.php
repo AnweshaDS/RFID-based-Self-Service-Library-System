@@ -10,6 +10,8 @@ return [
         'UG' => ['label' => 'Undergraduate', 'max_books' => 3],
         'PG' => ['label' => 'Postgraduate',  'max_books' => 5],
         'T'  => ['label' => 'Teacher',       'max_books' => 15],
+            // Shown next to fine amounts
+    'currency' => env('KIOSK_CURRENCY', 'BDT'),
     ],
 
     // Used when a category is missing or not listed above (strict on purpose)
