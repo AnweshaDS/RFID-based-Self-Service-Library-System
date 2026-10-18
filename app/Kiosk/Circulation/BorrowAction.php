@@ -10,6 +10,10 @@ class BorrowAction implements CirculationAction
 
     public function validate(array $item, array $patron): ?string
     {
+        if (! empty($patron['restricted'])) {
+            return 'Your account is restricted. Please contact the library desk.';
+        }
+
         return $this->isUnavailable($item) ? 'This book is currently unavailable.' : null;
     }
 
@@ -30,12 +34,16 @@ class BorrowAction implements CirculationAction
 
     private function isUnavailable(array $item): bool
     {
-        if (! empty($item['checked_out']) || ! empty($item['onloan'])) {
+        // Koha REST field names first, older names kept as a fallback
+        if (! empty($item['checked_out_date']) || ! empty($item['checked_out']) || ! empty($item['onloan'])) {
             return true;
         }
 
-        foreach (['notforloan', 'withdrawn', 'itemlost'] as $flag) {
-            if (! empty($item[$flag]) && (int) $item[$flag] > 0) {
+        foreach ([
+            'not_for_loan_status', 'effective_not_for_loan_status', 'notforloan',
+            'lost_status', 'itemlost', 'withdrawn',
+        ] as $flag) {
+            if (! empty($item[$flag])) {
                 return true;
             }
         }

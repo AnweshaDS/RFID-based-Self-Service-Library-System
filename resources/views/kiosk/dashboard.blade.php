@@ -2,6 +2,17 @@
 <x-kiosk-layout :scan-line="false" max-width="max-w-2xl">
     @php $category = \App\Support\PatronCategory::for($patron['category_code'] ?? null); @endphp
     <div class="rounded-2xl bg-paper/8 p-8">
+        @if (session('renewed'))
+            <p class="mb-6 rounded-lg bg-catalog-teal/20 px-4 py-2.5 text-sm font-medium text-paper">{{ session('renewed') }}</p>
+        @endif
+        @error('renew')
+            <p class="mb-6 rounded-lg bg-red-500/10 px-4 py-2.5 text-sm text-red-300">{{ $message }}</p>
+        @enderror
+        @if (($patron['status'] ?? 'Active') !== 'Active')
+            <p class="mb-6 rounded-lg bg-red-500/10 px-4 py-2.5 text-sm text-red-300">
+                Your account is {{ strtolower($patron['status']) }}. Please contact the library desk.
+            </p>
+        @endif
     
         <div class="flex items-start justify-between">
             <div>
@@ -11,7 +22,7 @@
                 <p class="mt-1 text-sm font-mono text-paper/70">Card No. {{ $patron['cardnumber'] ?? '' }}</p>
                 <p class="mt-1 text-sm text-paper/70">{{ $category['label'] }}</p>
             </div>
-            <span class="flex items-center gap-1.5 rounded-full bg-catalog-teal/25 px-3 py-1 text-xs font-medium text-paper">
+            <span class="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium {{ ($patron['status'] ?? 'Active') === 'Active' ? 'bg-catalog-teal/25 text-paper' : 'bg-red-500/20 text-red-300' }}">
                 <span class="h-1.5 w-1.5 rounded-full bg-signal-amber"></span>
                 {{ $patron['status'] }}
             </span>
@@ -36,7 +47,7 @@
                 <svg class="h-5 w-5 flex-shrink-0 text-catalog-teal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                 <div>
                     <p class="font-display text-xl leading-none">{{ $patron['status'] }}</p>
-                    <p class="mt-1 text-xs text-paper/50">Account</p>
+                    <p class="mt-1 text-xs text-paper/50">Account@if (! is_null($patron['balance'] ?? null)) &middot; Fines {{ number_format($patron['balance'], 2) }} {{ config('kiosk.currency') }}@endif</p>
                 </div>
             </div>
         </div>
@@ -65,10 +76,19 @@
                             <span class="block text-xs font-mono text-paper/40">Barcode: {{ $book['barcode'] }}</span>
                         @endif
                     </div>
-                                        @if ($due)
+                    @if ($due)
                         <span class="rounded-full px-2.5 py-1 text-xs font-medium {{ $isOverdue ? 'bg-red-500/20 text-red-300' : ($isDueSoon ? 'bg-signal-amber/15 text-signal-amber' : 'text-paper/50') }}">
                             {{ $isOverdue ? 'Overdue since' : 'Due' }} {{ $due->format('d M Y') }}
                         </span>
+                    @endif
+                    @if (!empty($book['barcode']) && $book['barcode'] !== 'N/A')
+                        <form method="POST" action="{{ route('kiosk.renew') }}" onsubmit="this.querySelector('button').disabled = true;">
+                            @csrf
+                            <input type="hidden" name="barcode" value="{{ $book['barcode'] }}">
+                            <button type="submit" class="rounded-lg bg-catalog-teal/20 px-3 py-1.5 text-xs font-semibold text-catalog-teal hover:bg-catalog-teal/30 transition">
+                                Renew
+                            </button>
+                        </form>
                     @endif
                 </div>
             @empty

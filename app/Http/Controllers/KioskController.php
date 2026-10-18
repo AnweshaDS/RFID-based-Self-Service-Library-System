@@ -49,7 +49,7 @@ public function scan(Request $request)
             'type' => 'patron',
             'cardnumber' => $card->cardnumber,
         ], 5);
-
+        Cache::put('kiosk.rfid_scan.' . $card->cardnumber, true, 30); 
         return response()->json(['ok' => true, 'type' => 'patron']);
     }
 
@@ -123,13 +123,15 @@ public function showReceiptView()
     $request->validate(['cardnumber' => 'required|string']);
 
     $cardnumber = trim($request->input('cardnumber'));
+        // Set by scan() only for real tag taps, so it cannot be faked from the browser
+    $loginAction = Cache::pull('kiosk.rfid_scan.' . $cardnumber) ? 'rfid_login' : 'manual_entry';
 
     try {
         $kohaPatron = $this->kohaService->getPatronByCardnumber($cardnumber);
 
         if (! $kohaPatron) {
             $this->activityLogService->log(
-                action: 'manual_entry',
+                action: $loginAction,
                 status: 'failed',
                 message: 'Patron not found.'
             );
@@ -144,7 +146,7 @@ public function showReceiptView()
     } catch (\Throwable $e) {
 \Illuminate\Support\Facades\Log::error('Koha checkout failed: ' . $e->getMessage());
         $this->activityLogService->log(
-            action: 'manual_entry',
+            action: $loginAction,
             status: 'failed',
             message: 'Koha service unavailable. Please try again later.'
         );
@@ -153,7 +155,7 @@ public function showReceiptView()
             'cardnumber' => 'Koha service unavailable. Please try again later.',
         ]);
     }
-
+    $balance = $this->kohaService->getPatronBalance($patronId);
     $firstname = $kohaPatron['firstname'] ?? '';
     $surname = $kohaPatron['surname'] ?? '';
     $name = trim("{$firstname} {$surname}");
@@ -170,7 +172,10 @@ public function showReceiptView()
         'cardnumber' => $kohaPatron['cardnumber'] ?? '',
 	'category_code' => $kohaPatron['category_id'] ?? $kohaPatron['categorycode'] ?? null,
         'name' => $name,
-        'status' => 'Active',
+        'status' => \App\Support\PatronStatus::from($kohaPatron),
+        'expiry_date' => $kohaPatron['expiry_date'] ?? null,
+        'restricted' => (bool) ($kohaPatron['restricted'] ?? false),
+        'balance' => $balance,
         'borrowed_books' => $borrowedBooks,
         'recent_activity' => [],
     ];
@@ -181,7 +186,7 @@ public function showReceiptView()
     Session::put('kiosk_last_activity', now());
 
     $this->activityLogService->log(
-        action: 'manual_entry',
+        action: $loginAction,
         status: 'success',
         patronId: $patronIdStr,
         message: "Patron {$name} entered successfully."
@@ -226,7 +231,7 @@ public function showReceiptView()
 
         $recentActivities = ActivityLog::where('patron_id', $patronId)
     ->where('status', 'success')
-    ->whereIn('action', ['borrow', 'return'])
+    ->whereIn('action', ['borrow', 'return', 'renew'])
     ->latest()
     ->take(10)
     ->get();

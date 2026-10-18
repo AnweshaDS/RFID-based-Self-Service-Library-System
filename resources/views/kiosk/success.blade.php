@@ -42,6 +42,16 @@
                 </div>
             @endforeach
         </div>
+        @if ($isBorrow)
+            @php
+                $p = session('kiosk_patron');
+                $cat = \App\Support\PatronCategory::for($p['category_code'] ?? null);
+                $left = max(0, $cat['max_books'] - count($p['borrowed_books'] ?? []));
+            @endphp
+            <p style="margin-top:16px; font-size:13px; color:rgba(246,247,245,0.6);">
+                You can borrow {{ $left }} more {{ \Illuminate\Support\Str::plural('book', $left) }}.
+            </p>
+        @endif
 
         <div style="margin-top:32px; display:flex; flex-direction:column; gap:12px;">
                         <a href="{{ route('kiosk.receipt') }}"
