@@ -170,7 +170,7 @@ class KohaService
         $response = Http::withToken($token)
             ->acceptJson()
             ->get("{$this->baseUrl}/api/v1/patrons", [
-                'q' => json_encode(['date_enrolled' => ['-ge' => $since->format('Y-m-d')]]),
+                'q' => json_encode(['date_enrolled' => ['>=' => $since->format('Y-m-d')]]),
             ]);
 
         if (!$response->successful()) {
