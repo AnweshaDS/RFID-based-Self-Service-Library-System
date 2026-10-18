@@ -4,6 +4,9 @@ namespace App\Services;
 
 use Exception;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Http\Client\Pool;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Cache;
 
 class KohaService
 {
@@ -29,10 +32,19 @@ class KohaService
      * @return string
      * @throws Exception
      */
-    public function getAccessToken(bool $forceRefresh = false): string
+        public function getAccessToken(bool $forceRefresh = false): string
     {
-        if ($this->accessToken && !$forceRefresh) {
-            return $this->accessToken;
+        if (! $forceRefresh) {
+            if ($this->accessToken) {
+                return $this->accessToken;
+            }
+
+            // Reuse the token across requests instead of asking Koha for a new one every time
+            $cached = Cache::get('koha.access_token');
+
+            if (is_string($cached) && $cached !== '') {
+                return $this->accessToken = $cached;
+            }
         }
 
         if (empty($this->clientId) || empty($this->clientSecret)) {
@@ -53,9 +65,12 @@ class KohaService
 
         $this->accessToken = (string) $response->json()['access_token'];
 
+        // Keep it for at most 5 minutes, and never past the token's own expiry
+        $lifetime = (int) ($response->json('expires_in') ?? 300);
+        Cache::put('koha.access_token', $this->accessToken, now()->addSeconds(max(30, min(300, $lifetime - 60))));
+
         return $this->accessToken;
     }
-
     /**
      * Check whether Koha is reachable, without exposing credentials or error details.
      *
@@ -309,7 +324,7 @@ class KohaService
      * @return array
      * @throws Exception
      */
-    public function getPatronCheckouts(int $patronId): array
+        public function getPatronCheckouts(int $patronId): array
     {
         $token = $this->getAccessToken();
         $response = Http::withToken($token)
@@ -324,7 +339,10 @@ class KohaService
 
         $checkouts = $response->json() ?? [];
 
-        foreach ($checkouts as &$checkout) {
+        // Work out which loans still need their book details
+        $needDetails = [];
+
+        foreach ($checkouts as $index => $checkout) {
             $hasTitle = !empty($checkout['item']['biblio']['title'])
                 || !empty($checkout['item']['title'])
                 || !empty($checkout['title']);
@@ -332,18 +350,24 @@ class KohaService
                 || !empty($checkout['barcode']);
 
             if ((!$hasTitle || !$hasBarcode) && !empty($checkout['item_id'])) {
-                try {
-                    $item = $this->getItemById((int) $checkout['item_id']);
-                    if ($item) {
-                        if (!isset($checkout['item']) || !is_array($checkout['item'])) {
-                            $checkout['item'] = $item;
-                        } else {
-                            $checkout['item'] = array_merge($item, $checkout['item']);
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    // Safe fallback
+                $needDetails[$index] = (int) $checkout['item_id'];
+            }
+        }
+
+        if ($needDetails) {
+            // Every lookup runs at the same time, instead of one after another
+            $items = $this->getItemsByIds(array_values(array_unique($needDetails)), $token);
+
+            foreach ($needDetails as $index => $itemId) {
+                if (empty($items[$itemId])) {
+                    continue;   // safe fallback: show what we have
                 }
+
+                $existing = $checkouts[$index]['item'] ?? null;
+
+                $checkouts[$index]['item'] = is_array($existing)
+                    ? array_merge($items[$itemId], $existing)
+                    : $items[$itemId];
             }
         }
 
@@ -447,5 +471,127 @@ class KohaService
         }
 
         return $response->json() ?? [];
+    }
+    /**
+     * Book details for several item IDs: cached ones are reused, the rest are fetched in parallel.
+     *
+     * @return array<int, array>
+     */
+    private function getItemsByIds(array $ids, string $token): array
+    {
+        $found = [];
+        $missing = [];
+
+        foreach ($ids as $id) {
+            $cached = Cache::get("koha.item.$id");
+
+            if (is_array($cached)) {
+                $found[$id] = $cached;
+            } else {
+                $missing[] = $id;
+            }
+        }
+
+        if (! $missing) {
+            return $found;
+        }
+
+        try {
+            $responses = Http::pool(fn (Pool $pool) => array_map(
+                fn ($id) => $pool->as((string) $id)->withToken($token)->acceptJson()->timeout(15)
+                    ->get("{$this->baseUrl}/api/v1/items/{$id}"),
+                $missing
+            ));
+        } catch (\Throwable $e) {
+            return $found;
+        }
+
+        $fetched = [];
+
+        foreach ($missing as $id) {
+            $r = $responses[(string) $id] ?? null;
+
+            if ($r instanceof Response && $r->successful()) {
+                $item = $r->json();
+
+                // Same barcode fix as normalizeItem()
+                if (empty($item['barcode']) && ! empty($item['external_id'])) {
+                    $item['barcode'] = $item['external_id'];
+                }
+
+                $fetched[$id] = $item;
+            }
+        }
+
+        // Titles and authors live on the biblio record, also fetched in parallel
+        $biblioIds = [];
+
+        foreach ($fetched as $id => $item) {
+            if (empty($item['biblio']['title']) && ! empty($item['biblio_id'])) {
+                $biblioIds[$id] = (int) $item['biblio_id'];
+            }
+        }
+
+        $biblios = $this->getBibliosByIds(array_values(array_unique($biblioIds)), $token);
+
+        foreach ($biblioIds as $id => $biblioId) {
+            if (isset($biblios[$biblioId])) {
+                $fetched[$id]['biblio'] = $biblios[$biblioId];
+            }
+        }
+
+        foreach ($fetched as $id => $item) {
+            Cache::put("koha.item.$id", $item, now()->addMinutes(10));
+            $found[$id] = $item;
+        }
+
+        return $found;
+    }
+
+    /**
+     * Title and author for several biblio IDs, cached for an hour.
+     *
+     * @return array<int, array{title: ?string, author: ?string}>
+     */
+    private function getBibliosByIds(array $ids, string $token): array
+    {
+        $found = [];
+        $missing = [];
+
+        foreach ($ids as $id) {
+            $cached = Cache::get("koha.biblio.$id");
+
+            if (is_array($cached)) {
+                $found[$id] = $cached;
+            } else {
+                $missing[] = $id;
+            }
+        }
+
+        if (! $missing) {
+            return $found;
+        }
+
+        try {
+            $responses = Http::pool(fn (Pool $pool) => array_map(
+                fn ($id) => $pool->as((string) $id)->withToken($token)->acceptJson()->timeout(15)
+                    ->get("{$this->baseUrl}/api/v1/biblios/{$id}"),
+                $missing
+            ));
+        } catch (\Throwable $e) {
+            return $found;
+        }
+
+        foreach ($missing as $id) {
+            $r = $responses[(string) $id] ?? null;
+
+            if ($r instanceof Response && $r->successful()) {
+                $biblio = ['title' => $r->json('title'), 'author' => $r->json('author')];
+                Cache::put("koha.biblio.$id", $biblio, now()->addHour());
+                $found[$id] = $biblio;
+            }
+        }
+
+        return $found;
     }
 }

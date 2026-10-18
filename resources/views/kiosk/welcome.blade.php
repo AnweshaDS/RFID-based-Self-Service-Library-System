@@ -26,9 +26,9 @@
 
     <div style="margin-top:24px; border-radius:16px; border:1px solid rgba(246,247,245,0.2); background:rgba(246,247,245,0.05); padding:24px;">
         <p style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:rgba(246,247,245,0.5); margin:0 0 12px 0;">Enter Student Card Number</p>
-        <form id="enter-form" method="POST" action="{{ route('kiosk.enter') }}" style="display:flex; gap:12px;">
+        <form id="enter-form" method="POST" action="{{ route('kiosk.enter') }}" style="display:flex; gap:12px;" onsubmit="document.getElementById('loading').style.display = 'flex';">
             @csrf
-                                    <x-kiosk-input name="cardnumber" id="cardnumber-input" placeholder="e.g. STU001" />
+            <x-kiosk-input name="cardnumber" id="cardnumber-input" placeholder="e.g. STU001" />
             <button
                 type="submit"
                 style="flex-shrink:0; background:#E4A72E; color:#16233E; border:none; border-radius:12px; padding:12px 24px; font-size:14px; font-weight:700; font-family:inherit; cursor:pointer; position:relative; z-index:999;"
@@ -74,6 +74,7 @@
             submitting = true;
             beep();
             document.getElementById('cardnumber-input').value = data.cardnumber;
+            document.getElementById('loading').style.display = 'flex';
             setTimeout(() => document.getElementById('enter-form').submit(), 150);
         } catch (e) {
             // ignore network blips and try again on the next tick
@@ -89,5 +90,19 @@
     }
     checkReader();
     setInterval(checkReader, 5000);
+    window.addEventListener('pageshow', function (e) {
+        if (e.persisted) {
+            document.getElementById('loading').style.display = 'none';
+            submitting = false;
+        }
+    });
 </script>
+    <div id="loading" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(10,18,36,0.94); align-items:center; justify-content:center; text-align:center; color:#F6F7F5;">
+        <div>
+            <div style="width:56px; height:56px; margin:0 auto 20px; border:5px solid rgba(246,247,245,0.2); border-top-color:#E4A72E; border-radius:50%; animation:kiosk-spin 0.9s linear infinite;"></div>
+            <p style="font-size:26px; font-weight:700; margin:0;">Loading your account...</p>
+            <p style="margin-top:8px; color:rgba(246,247,245,0.75); font-size:16px;">This can take a few seconds.</p>
+        </div>
+    </div>
+    <style>@keyframes kiosk-spin { to { transform: rotate(360deg); } }</style>
     </x-kiosk-layout>

@@ -3,7 +3,7 @@
 <form id="idle-logout-form" method="POST" action="{{ route('kiosk.logout') }}" style="display:none;">@csrf</form>
 <form method="POST" action="{{ route('kiosk.logout') }}" style="position:fixed; top:16px; right:16px; z-index:9999;">
     @csrf
-    <button type="submit" style="background:rgba(10,18,36,0.85); color:#F6F7F5; border:1px solid rgba(246,247,245,0.3); border-radius:10px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer;">
+    <button type="submit" style="background:rgba(10,18,36,0.85); color:#F6F7F5; border:1px solid rgba(246,247,245,0.3); border-radius:10px; padding:12px 22px; font-size:16px; font-weight:600; cursor:pointer;">
         Log out
     </button>
 </form>
