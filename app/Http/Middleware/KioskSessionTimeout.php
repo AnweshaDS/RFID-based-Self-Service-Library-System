@@ -16,12 +16,8 @@ class KioskSessionTimeout
         $lastActivity = Session::get('kiosk_last_activity');
 
         if ($lastActivity && now()->timestamp - Carbon::parse($lastActivity)->timestamp > $limit) {
-            Session::forget('kiosk_patron');
-            Session::forget('kiosk_borrow_item');
-            Session::forget('kiosk_return_item');
-            Session::forget('kiosk_last_receipt');
-            Session::forget('kiosk_last_activity');
-Session::forget('kiosk_cart');
+                        Session::invalidate();
+            Session::regenerateToken();
 
             return redirect()->route('kiosk.welcome')
                 ->with('status', 'Session timed out for your security.');

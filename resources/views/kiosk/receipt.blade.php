@@ -19,19 +19,8 @@
         <a href="{{ route('kiosk.receipt.pdf') }}" target="_blank">Open receipt manually</a>
         <a href="{{ route('kiosk.dashboard') }}">Back to Dashboard</a>
     </div>
-
-    <script>
-        const frame = document.getElementById('receipt-frame');
-        frame.addEventListener('load', function () {
-            setTimeout(function () {
-                try {
-                    frame.contentWindow.focus();
-                    frame.contentWindow.print();
-                } catch (e) {
-                    window.open("{{ route('kiosk.receipt.pdf') }}", '_blank');
-                }
-            }, 300);
-        });
-    </script>
+        @if (session()->has('kiosk_patron'))
+        @include('kiosk.partials.idle-timer')
+    @endif
 </body>
 </html>

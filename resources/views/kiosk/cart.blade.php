@@ -31,8 +31,25 @@
             </button>
         </form>
 
-        <p class="mt-8 text-xs font-semibold uppercase tracking-wide text-paper/50">
-            Your cart ({{ count($items) }}/{{ $max }})
+                @if ($isBorrow)
+            @php $spaceLeft = max(0, $limit - count($items)); @endphp
+            <div style="margin-top:24px; border-radius:12px; background:rgba(246,247,245,0.06); padding:12px 16px; font-size:13px; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+                <span>{{ $category['label'] }}: up to {{ $category['max_books'] }} books</span>
+                <span>On loan {{ $onLoan }} &middot; In cart {{ count($items) }} &middot; Space left {{ $spaceLeft }}</span>
+            </div>
+            @if ($spaceLeft === 0)
+                <p style="margin-top:8px; font-size:12px; color:#fbbf24;">
+                    @if ($onLoan >= $category['max_books'])
+                        You have reached your limit. Please return a book before borrowing more.
+                    @else
+                        Your cart is full. Remove a book to add another.
+                    @endif
+                </p>
+            @endif
+        @endif
+
+        <p class="mt-6 text-xs font-semibold uppercase tracking-wide text-paper/50">
+            Your cart ({{ count($items) }})
         </p>
         <div class="mt-3 space-y-2">
             @forelse ($items as $item)
@@ -63,7 +80,7 @@
         @if (count($items) > 0)
             <div style="margin-top:24px; display:flex; gap:12px;">
                 <form method="POST" action="{{ route("kiosk.$mode.confirm.store") }}" style="flex:1;"
-                      onsubmit="this.querySelector('button').disabled = true;">
+                      onsubmit="this.querySelector('button').disabled = true; document.getElementById('processing').style.display = 'flex';">
                     @csrf
                     <input type="hidden" name="cart_token" value="{{ $token }}">
                     <button type="submit" style="width:100%; background:#E4A72E; color:#16233E; border:none; border-radius:12px; padding:14px 24px; font-size:15px; font-weight:700; cursor:pointer;">
@@ -100,6 +117,12 @@
                 @endforeach
             </div>
         @endif
+    </div>
+    <div id="processing" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(10,18,36,0.92); align-items:center; justify-content:center; text-align:center; color:#F6F7F5;">
+        <div>
+            <p style="font-size:24px; font-weight:700; margin:0;">Processing your request...</p>
+            <p style="margin-top:8px; color:rgba(246,247,245,0.7);">Please wait, this can take a few seconds.</p>
+        </div>
     </div>
 
     @include('kiosk.partials.book-scan')
