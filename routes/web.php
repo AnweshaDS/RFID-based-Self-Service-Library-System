@@ -6,13 +6,15 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\KioskController;
 use App\Http\Controllers\KioskCartController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\KioskRenewalController;
 
 Route::prefix('kiosk')->name('kiosk.')->group(function () {
     Route::get('/', [KioskController::class, 'welcome'])->name('welcome');
     Route::post('/enter', [KioskController::class, 'enterByCardnumber'])->name('enter');
     Route::middleware('kiosk.timeout')->group(function () {
-                Route::get('/receipt/view', [KioskController::class, 'showReceiptView'])->name('receipt.view');
-Route::post('/keepalive', fn () => response()->noContent())->name('keepalive');
+        Route::post('/renew', [KioskRenewalController::class, 'renew'])->middleware('throttle:20,1')->name('renew');
+        Route::get('/receipt/view', [KioskController::class, 'showReceiptView'])->name('receipt.view');
+        Route::post('/keepalive', fn () => response()->noContent())->name('keepalive');
         Route::get('/dashboard', [KioskController::class, 'dashboard'])->name('dashboard');
         Route::get('/receipt', [KioskController::class, 'printReceipt'])->name('receipt');
         Route::get('/receipt/pdf', [KioskController::class, 'receiptPdf'])->name('receipt.pdf');

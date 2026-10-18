@@ -231,7 +231,7 @@ public function showReceiptView()
 
         $recentActivities = ActivityLog::where('patron_id', $patronId)
     ->where('status', 'success')
-    ->whereIn('action', ['borrow', 'return'])
+    ->whereIn('action', ['borrow', 'return', 'renew'])
     ->latest()
     ->take(10)
     ->get();
