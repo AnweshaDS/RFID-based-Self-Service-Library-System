@@ -50,6 +50,7 @@ return [
         'base_url' => env('KOHA_BASE_URL', 'http://kohadev.myDNSname.org:8082'),
         'client_id' => env('KOHA_CLIENT_ID'),
         'client_secret' => env('KOHA_CLIENT_SECRET'),
+        'staff_url' => env('KOHA_STAFF_URL'),
     ],
 
         'koha_sip' => [
