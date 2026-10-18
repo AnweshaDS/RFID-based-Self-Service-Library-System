@@ -48,7 +48,7 @@ public function scan(Request $request)
             'id' => uniqid(),
             'type' => 'patron',
             'cardnumber' => $card->cardnumber,
-        ], 15);
+        ], 5);
 
         return response()->json(['ok' => true, 'type' => 'patron']);
     }
@@ -75,7 +75,7 @@ public function scan(Request $request)
 
 public function pollScan(Request $request)
 {
-    $wanted = $request->query('type');   // 'patron' on the welcome page, 'book' on borrow/return
+    $wanted = $request->query('type');   // 'patron', 'book', or 'none' (already logged in)
 
     $scan = Cache::get('kiosk.pending_scan');
     if (! $scan) {
@@ -88,6 +88,15 @@ public function pollScan(Request $request)
         return response()->json($scan);
     }
 
+    if ($wanted === 'none') {
+        return response()->json([
+            'id' => $scan['id'],
+            'error' => ($scan['type'] ?? '') === 'patron'
+                ? 'You are already logged in. Please log out first to use a different card.'
+                : 'Open Borrow or Return first, then tap the book.',
+        ]);
+    }
+
     if (($scan['type'] ?? '') !== $wanted) {
         return response()->json([
             'id' => $scan['id'],
@@ -98,6 +107,16 @@ public function pollScan(Request $request)
     }
 
     return response()->json($scan);
+}
+public function showReceiptView()
+{
+    $receipt = Session::get('kiosk_last_receipt');
+
+    if (! $receipt) {
+        return redirect()->route('kiosk.dashboard');
+    }
+
+    return view('kiosk.receipt-view', ['receipt' => $receipt]);
 }
     public function enterByCardnumber(Request $request)
 {
@@ -149,12 +168,15 @@ public function pollScan(Request $request)
     $patron = [
         'patron_id' => $patronIdStr,
         'cardnumber' => $kohaPatron['cardnumber'] ?? '',
+	'category_code' => $kohaPatron['category_id'] ?? $kohaPatron['categorycode'] ?? null,
         'name' => $name,
         'status' => 'Active',
         'borrowed_books' => $borrowedBooks,
         'recent_activity' => [],
     ];
 
+    Session::regenerate();
+    Cache::forget('kiosk.pending_scan');
     Session::put('kiosk_patron', $patron);
     Session::put('kiosk_last_activity', now());
 
@@ -179,18 +201,26 @@ public function pollScan(Request $request)
             return redirect()->route('kiosk.welcome');
         }
 
-        $dueSoonCount = collect($patron['borrowed_books'] ?? [])
-            ->filter(function ($book) {
-                if (empty($book['due'])) {
-                    return false;
-                }
-                try {
-                    return now()->diffInDays(\Illuminate\Support\Carbon::parse($book['due']), false) <= 3;
-                } catch (\Throwable $e) {
-                    return false;
-                }
-            })
-            ->count();
+                $dueSoonCount = 0;
+        $overdueCount = 0;
+
+        foreach ($patron['borrowed_books'] ?? [] as $book) {
+            if (empty($book['due'])) {
+                continue;
+            }
+
+            try {
+                $due = \Illuminate\Support\Carbon::parse($book['due']);
+            } catch (\Throwable $e) {
+                continue;
+            }
+
+            if ($due->copy()->endOfDay()->isPast()) {
+                $overdueCount++;
+            } elseif ($due->lte(now()->addDays(3))) {
+                $dueSoonCount++;
+            }
+        }
 
         $patronId = (string) ($patron['patron_id'] ?? '');
 
@@ -204,6 +234,7 @@ public function pollScan(Request $request)
         return view('kiosk.dashboard', [
             'patron' => $patron,
             'dueSoonCount' => $dueSoonCount,
+'overdueCount' => $overdueCount,
             'recentActivities' => $recentActivities,
         ]);
     }
@@ -231,12 +262,34 @@ public function receiptPdf()
     // allowance for a prototype - DomPDF needs a fixed page size, so this isn't
     // true continuous-roll printing. That would need raw ESC/POS output instead
     // of a PDF, which is a bigger change for later if needed.
-    $widthMm = 58;
-    $heightMm = 120;
+        $widthMm = 58;
+
+    ['lines' => $lines, 'failed' => $failedCount] = \App\Support\ReceiptLines::from($receipt);
+    $isBorrow = ($receipt['type'] ?? '') === 'borrow';
+
+    // DomPDF needs a fixed page size, so estimate it from the content.
+    // 62 mm covers the header, patron details and footer; each book adds its rows
+    // (long titles wrap, hence the division by 30 characters) plus its divider.
+    $mm = 62 + ($failedCount > 0 ? 6 : 0);
+
+    foreach ($lines as $line) {
+        $rows = max(1, (int) ceil(mb_strlen((string) ($line['title'] ?? '')) / 30))
+            + (empty($line['author']) ? 0 : max(1, (int) ceil(mb_strlen((string) $line['author']) / 30)))
+            + 1                                                              // barcode
+            + ($isBorrow && ! empty($line['due_date']) ? 1 : 0);             // due date
+
+        $mm += $rows * 3.6 + 3;
+    }
+
+    $heightMm = (int) ceil($mm + 8);
     $widthPt = $widthMm * 2.8346;
     $heightPt = $heightMm * 2.8346;
 
-    $pdf = Pdf::loadView('kiosk.receipt-pdf', ['receipt' => $receipt])
+    $pdf = Pdf::loadView('kiosk.receipt-pdf', [
+            'receipt' => $receipt,
+            'lines' => $lines,
+            'failedCount' => $failedCount,
+        ])
         ->setPaper([0, 0, $widthPt, $heightPt]);
 
     $pdf->render();
@@ -637,16 +690,32 @@ Session::put('kiosk_patron', $patron);
     }
 
     public function logout()
-    {
-        Session::forget('kiosk_patron');
-        Session::forget('kiosk_borrow_item');
-        Session::forget('kiosk_return_item');
-        Session::forget('kiosk_last_activity');
-        Session::forget('kiosk_last_receipt');
-Session::forget('kiosk_cart');
+{
+    Session::invalidate();
+    Session::regenerateToken();
+    Cache::forget('kiosk.pending_scan');
 
-        return redirect()->route('kiosk.welcome');
-    }
+    return redirect()->route('kiosk.welcome');
+}
+public function readerStatus(Request $request)
+{
+    $expected = (string) config('services.kiosk.token');
+    abort_unless(
+        $expected !== '' && hash_equals($expected, (string) $request->header('X-Kiosk-Token')),
+        401
+    );
+
+    Cache::put('kiosk.reader', ['connected' => (bool) $request->input('connected')], 30);
+
+    return response()->noContent();
+}
+
+public function readerOnline()
+{
+    $reader = Cache::get('kiosk.reader');
+
+    return response()->json(['online' => (bool) ($reader['connected'] ?? false)]);
+}
 
     protected function isItemUnavailable(array $item): bool
     {

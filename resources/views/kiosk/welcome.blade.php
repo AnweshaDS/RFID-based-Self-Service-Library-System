@@ -15,6 +15,9 @@
         @enderror
 
         <p id="scan-error" class="mt-6 rounded-lg bg-red-500/10 px-4 py-2.5 text-sm text-red-300" style="display:none;"></p>
+        <p id="reader-offline" style="display:none; margin-top:24px; font-size:13px; color:#fbbf24;">
+            Card reader is offline. You can still enter your card number below.
+        </p>
 
         @if (session('status'))
             <p class="mt-6 rounded-lg bg-catalog-teal/10 px-4 py-2.5 text-sm text-catalog-teal">{{ session('status') }}</p>
@@ -37,6 +40,17 @@
 <script>
     let submitting = false;
 
+    function beep() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            osc.frequency.value = 880;
+            osc.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.12);
+        } catch (e) {}
+    }
+
     setInterval(async () => {
         if (submitting) return;
 
@@ -55,16 +69,25 @@
                 return;
             }
 
-            // Only log in when a real card number arrived
             if (typeof data.cardnumber !== 'string' || data.cardnumber.trim() === '') return;
 
             submitting = true;
+            beep();
             document.getElementById('cardnumber-input').value = data.cardnumber;
-            document.getElementById('enter-form').submit();
+            setTimeout(() => document.getElementById('enter-form').submit(), 150);
         } catch (e) {
             // ignore network blips and try again on the next tick
         }
     }, 700);
-</script>
 
+    async function checkReader() {
+        try {
+            const res = await fetch('/api/kiosk/reader-status', { headers: { 'Accept': 'application/json' } });
+            const data = await res.json();
+            document.getElementById('reader-offline').style.display = data.online ? 'none' : 'block';
+        } catch (e) {}
+    }
+    checkReader();
+    setInterval(checkReader, 5000);
+</script>
     </x-kiosk-layout>

@@ -1,4 +1,14 @@
 <script>
+    function beep() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            osc.frequency.value = 880;
+            osc.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.12);
+        } catch (e) {}
+    }
 (function () {
     const input = document.getElementById('barcode');
     if (!input) return;
@@ -33,9 +43,10 @@
             // Only act on a real barcode
             if (typeof data.barcode !== 'string' || data.barcode.trim() === '') return;
 
-            submitting = true;
+                        submitting = true;
+            beep();
             input.value = data.barcode;
-            form.submit();
+            setTimeout(function () { form.submit(); }, 150);
         } catch (e) {
             // ignore network blips, try again next tick
         }

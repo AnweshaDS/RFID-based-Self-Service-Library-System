@@ -3,16 +3,14 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Session;
+use App\Support\PatronCategory;
 use Illuminate\Support\Str;
 
 class KioskCartService
 {
     private const KEY = 'kiosk_cart';
 
-    public function max(): int
-    {
-        return max(1, (int) config('kiosk.max_cart_items', 5));
-    }
+    
 
     public function items(string $mode): array
     {
@@ -38,11 +36,24 @@ class KioskCartService
         );
     }
 
-    public function isFull(string $mode): bool
+        /** Free borrowing slots, or null when there is no limit (returns). */
+    public function limit(string $mode, array $patron): ?int
     {
-        return count($this->items($mode)) >= $this->max();
+        if ($mode !== 'borrow') {
+            return null;   // a return cart is naturally capped by what the patron has on loan
+        }
+
+        $max = PatronCategory::for($patron['category_code'] ?? null)['max_books'];
+
+        return max(0, $max - count($patron['borrowed_books'] ?? []));
     }
 
+    public function isFull(string $mode, array $patron): bool
+    {
+        $limit = $this->limit($mode, $patron);
+
+        return $limit !== null && count($this->items($mode)) >= $limit;
+    }
     public function add(string $mode, array $item): void
     {
         $items = $this->items($mode);

@@ -16,10 +16,12 @@
 </style>
 </head>
 <body>
+    @php $isBorrow = ($receipt['type'] ?? '') === 'borrow'; @endphp
+
     <h1>KUET Central Library</h1>
     <p class="subtitle">Self-Service Transaction Receipt</p>
 
-    <div class="badge">{{ $receipt['type'] === 'borrow' ? 'Book Borrowed' : 'Book Returned' }}</div>
+    <div class="badge">{{ $lines->count() }} {{ \Illuminate\Support\Str::plural('Book', $lines->count()) }} {{ $isBorrow ? 'Borrowed' : 'Returned' }}</div>
 
     <div class="divider"></div>
 
@@ -31,16 +33,29 @@
 
     <div class="divider"></div>
 
-    <table class="row">
-        <tr><td>Title</td><td class="value">{{ $receipt['title'] }}</td></tr>
-        @if (!empty($receipt['author']))
-            <tr><td>Author</td><td class="value">{{ $receipt['author'] }}</td></tr>
+    @foreach ($lines as $line)
+        <table class="row">
+            <tr><td>{{ $loop->iteration }}. Title</td><td class="value">{{ $line['title'] }}</td></tr>
+            @if (!empty($line['author']))
+                <tr><td>Author</td><td class="value">{{ $line['author'] }}</td></tr>
+            @endif
+            <tr><td>Barcode</td><td class="value">{{ $line['barcode'] ?? 'N/A' }}</td></tr>
+            @if ($isBorrow && !empty($line['due_date']))
+                <tr><td>Due Date</td><td class="value">{{ \Illuminate\Support\Carbon::parse($line['due_date'])->format('d M Y') }}</td></tr>
+            @endif
+        </table>
+
+        @if (! $loop->last)
+            <div class="divider"></div>
         @endif
-        <tr><td>Barcode</td><td class="value">{{ $receipt['barcode'] ?? 'N/A' }}</td></tr>
-        @if ($receipt['type'] === 'borrow' && !empty($receipt['due_date']))
-            <tr><td>Due Date</td><td class="value">{{ \Illuminate\Support\Carbon::parse($receipt['due_date'])->format('d M Y') }}</td></tr>
-        @endif
-    </table>
+    @endforeach
+
+    @if ($failedCount > 0)
+        <div class="divider"></div>
+        <table class="row">
+            <tr><td>Not completed</td><td class="value">{{ $failedCount }}</td></tr>
+        </table>
+    @endif
 
     <div class="divider"></div>
 

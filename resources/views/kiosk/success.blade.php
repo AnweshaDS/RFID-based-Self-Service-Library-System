@@ -1,3 +1,4 @@
+@include('kiosk.partials.scan-notice')
 <x-kiosk-layout max-width="max-w-xl">
     @php
         $isBorrow = ($receipt['type'] ?? '') === 'borrow';
@@ -43,9 +44,13 @@
         </div>
 
         <div style="margin-top:32px; display:flex; flex-direction:column; gap:12px;">
-            <a href="{{ route('kiosk.receipt') }}"
+                        <a href="{{ route('kiosk.receipt') }}"
                style="display:block; background:#E4A72E; color:#16233E; border-radius:12px; padding:14px 24px; font-size:15px; font-weight:700; text-decoration:none;">
                 Print Receipt
+            </a>
+            <a href="{{ route('kiosk.receipt.view') }}"
+               style="display:block; border:1px solid rgba(246,247,245,0.3); color:#F6F7F5; border-radius:12px; padding:14px 24px; font-size:15px; font-weight:600; text-decoration:none;">
+                View Receipt
             </a>
             <a href="{{ route('kiosk.dashboard') }}"
                style="display:block; border:1px solid rgba(246,247,245,0.3); color:#F6F7F5; border-radius:12px; padding:14px 24px; font-size:15px; font-weight:600; text-decoration:none;">
@@ -53,4 +58,22 @@
             </a>
         </div>
     </div>
+    <p style="margin-top:16px; text-align:center; font-size:12px; color:rgba(246,247,245,0.5);">
+        Logging out automatically in <span id="auto-logout-count">30</span> s
+    </p>
+    <script>
+        (function () {
+            let s = 30;
+            const el = document.getElementById('auto-logout-count');
+            const t = setInterval(function () {
+                s--;
+                el.textContent = s;
+                if (s <= 0) {
+                    clearInterval(t);
+                    document.getElementById('idle-logout-form').submit();
+                }
+            }, 1000);
+        })();
+    </script>
+    @include('kiosk.partials.scan-notice')
 </x-kiosk-layout>

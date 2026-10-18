@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
+use App\Support\PatronCategory;
 
 class KioskCartController extends Controller
 {
@@ -28,12 +29,14 @@ class KioskCartController extends Controller
             return $this->needsLogin();
         }
 
-        return view('kiosk.cart', [
+                return view('kiosk.cart', [
             'mode' => $mode,
             'patron' => $patron,
             'items' => $this->cart->items($mode),
             'token' => $this->cart->token($mode),
-            'max' => $this->cart->max(),
+            'category' => PatronCategory::for($patron['category_code'] ?? null),
+            'onLoan' => count($patron['borrowed_books'] ?? []),
+            'limit' => $this->cart->limit($mode, $patron),
         ]);
     }
 
@@ -54,8 +57,8 @@ class KioskCartController extends Controller
             return $this->reject($mode, 'This book is already in your cart.');
         }
 
-        if ($this->cart->isFull($mode)) {
-            return $this->reject($mode, 'Your cart is full (' . $this->cart->max() . ' books maximum).');
+                if ($this->cart->isFull($mode, $patron)) {
+            return $this->reject($mode, $this->limitMessage($patron));
         }
 
         try {
@@ -110,13 +113,18 @@ class KioskCartController extends Controller
         }
 
         $patronId = (string) ($patron['patron_id'] ?? '');
-        $lock = Cache::lock("kiosk-confirm-{$patronId}", 60);
+        $lock = Cache::lock("kiosk-confirm-{$patronId}", 180);
 
         if (! $lock->get()) {
             return $this->reject($mode, 'Your request is already being processed.');
         }
 
         try {
+	     $limit = $this->cart->limit($mode, $patron);
+
+            if ($limit !== null && count($this->cart->items($mode)) > $limit) {
+                return $this->reject($mode, $this->limitMessage($patron));
+            }
             $items = $this->cart->consume($mode, (string) $request->input('cart_token'));
 
             if ($items === null) {
@@ -135,6 +143,7 @@ class KioskCartController extends Controller
 
     private function process(CirculationAction $action, string $mode, array $patron, array $items): array
     {
+	set_time_limit(180);
         $patronId = (string) ($patron['patron_id'] ?? '');
         $results = [];
 
@@ -243,6 +252,18 @@ class KioskCartController extends Controller
     private function reject(string $mode, string $message)
     {
         return redirect()->route("kiosk.$mode")->withErrors(['barcode' => $message]);
+    }
+
+    private function limitMessage(array $patron): string
+    {
+        $category = PatronCategory::for($patron['category_code'] ?? null);
+        $onLoan = count($patron['borrowed_books'] ?? []);
+
+        if ($onLoan >= $category['max_books']) {
+            return "You have reached your limit of {$category['max_books']} books ({$category['label']}). Please return a book before borrowing more.";
+        }
+
+        return "Your cart is full. As a {$category['label']} you can hold {$category['max_books']} books at once ({$onLoan} already on loan). Remove a book from your cart to add another.";
     }
 
     private function fail(string $mode, string $patronId, string $barcode, ?int $itemId, string $message)

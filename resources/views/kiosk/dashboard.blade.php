@@ -1,4 +1,6 @@
+@include('kiosk.partials.scan-notice')
 <x-kiosk-layout :scan-line="false" max-width="max-w-2xl">
+    @php $category = \App\Support\PatronCategory::for($patron['category_code'] ?? null); @endphp
     <div class="rounded-2xl bg-paper/8 p-8">
     
         <div class="flex items-start justify-between">
@@ -7,6 +9,7 @@
                 <p class="font-display text-3xl">{{ $patron['name'] }}</p>
                                 <p class="mt-1 text-xs text-paper/40">Patron ID {{ $patron['patron_id'] }}</p>
                 <p class="mt-1 text-sm font-mono text-paper/70">Card No. {{ $patron['cardnumber'] ?? '' }}</p>
+                <p class="mt-1 text-sm text-paper/70">{{ $category['label'] }}</p>
             </div>
             <span class="flex items-center gap-1.5 rounded-full bg-catalog-teal/25 px-3 py-1 text-xs font-medium text-paper">
                 <span class="h-1.5 w-1.5 rounded-full bg-signal-amber"></span>
@@ -18,7 +21,7 @@
             <div class="flex items-center gap-3 rounded-xl bg-paper/10 px-4 py-3">
                 <svg class="h-5 w-5 flex-shrink-0 text-signal-amber" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
                 <div>
-                    <p class="font-display text-xl leading-none">{{ count($patron['borrowed_books']) }}</p>
+                    <p class="font-display text-xl leading-none">{{ count($patron['borrowed_books']) }}<span class="text-sm text-paper/50"> / {{ $category['max_books'] }}</span></p>
                     <p class="mt-1 text-xs text-paper/50">Borrowed</p>
                 </div>
             </div>
@@ -39,11 +42,17 @@
         </div>
 
         <p class="mt-8 text-xs font-semibold uppercase tracking-wide text-paper/50">Current loans</p>
+        @if (($overdueCount ?? 0) > 0)
+            <p class="mt-3 rounded-lg bg-red-500/10 px-4 py-2.5 text-sm text-red-300">
+                You have {{ $overdueCount }} overdue {{ \Illuminate\Support\Str::plural('book', $overdueCount) }}. Please return {{ $overdueCount === 1 ? 'it' : 'them' }} as soon as possible.
+            </p>
+        @endif
         <div class="mt-3 space-y-2">
             @forelse ($patron['borrowed_books'] as $book)
-                @php
+                                @php
                     $due = !empty($book['due']) ? \Illuminate\Support\Carbon::parse($book['due']) : null;
-                    $isDueSoon = $due && now()->diffInDays($due, false) <= 3;
+                   $isOverdue = $due && $due->copy()->endOfDay()->isPast();
+                    $isDueSoon = $due && ! $isOverdue && $due->lte(now()->addDays(3));
                 @endphp
                 <div class="flex items-center gap-3 rounded-xl bg-paper/10 px-4 py-3 text-sm">
                     <svg class="h-4 w-4 flex-shrink-0 text-paper/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
@@ -56,9 +65,9 @@
                             <span class="block text-xs font-mono text-paper/40">Barcode: {{ $book['barcode'] }}</span>
                         @endif
                     </div>
-                    @if ($due)
-                        <span class="rounded-full px-2.5 py-1 text-xs font-medium {{ $isDueSoon ? 'bg-signal-amber/15 text-signal-amber' : 'text-paper/50' }}">
-                            Due {{ $due->format('d M Y') }}
+                                        @if ($due)
+                        <span class="rounded-full px-2.5 py-1 text-xs font-medium {{ $isOverdue ? 'bg-red-500/20 text-red-300' : ($isDueSoon ? 'bg-signal-amber/15 text-signal-amber' : 'text-paper/50') }}">
+                            {{ $isOverdue ? 'Overdue since' : 'Due' }} {{ $due->format('d M Y') }}
                         </span>
                     @endif
                 </div>
