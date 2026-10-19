@@ -69,11 +69,11 @@
         </div>
     </div>
     <p style="margin-top:16px; text-align:center; font-size:12px; color:rgba(246,247,245,0.5);">
-        Logging out automatically in <span id="auto-logout-count">30</span> s
+        Logging out automatically in <span id="auto-logout-count">60</span> s
     </p>
     <script>
         (function () {
-            let s = 30;
+            let s = 60;
             const el = document.getElementById('auto-logout-count');
             const t = setInterval(function () {
                 s--;

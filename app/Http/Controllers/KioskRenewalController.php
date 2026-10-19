@@ -57,7 +57,7 @@ class KioskRenewalController extends Controller
             action: 'renew',
             status: 'success',
             patronId: $patronId,
-            message: 'Book renewed successfully.',
+            message: 'Renewed: ' . ($loan['title'] ?? 'Book'),
             barcode: $barcode,
             itemId: (int) data_get($loan, 'raw.item_id', 0)
         );

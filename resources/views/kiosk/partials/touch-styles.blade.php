@@ -21,4 +21,9 @@
     /* Kiosk behaviour: no accidental text selection, but inputs still work */
     body { -webkit-user-select: none; user-select: none; }
     input { -webkit-user-select: text; user-select: text; }
+    /* Text that stands out */
+    .font-display { font-weight: 700; }
+    .font-medium { font-weight: 600 !important; }
+    span.block.font-medium { color: #ffffff; }
+    .uppercase.tracking-wide { color: #E4A72E !important; letter-spacing: 0.08em; }
 </style>

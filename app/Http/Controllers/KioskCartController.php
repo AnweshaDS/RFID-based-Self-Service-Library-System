@@ -54,7 +54,7 @@ class KioskCartController extends Controller
         $patronId = (string) ($patron['patron_id'] ?? '');
 
         if ($this->cart->has($mode, $barcode)) {
-            return $this->reject($mode, 'This book is already in your cart.');
+                        return $this->reject($mode, 'This book is already in your ' . ($mode === 'borrow' ? 'borrow list.' : 'return list.'));
         }
 
                 if ($this->cart->isFull($mode, $patron)) {
@@ -80,7 +80,10 @@ class KioskCartController extends Controller
         $entry = $this->summarize($item, $patron, $barcode);
         $this->cart->add($mode, $entry);
 
-        return redirect()->route("kiosk.$mode")->with('status', 'Added: ' . $entry['title']);
+                return redirect()->route("kiosk.$mode")->with(
+            'status',
+            ($mode === 'borrow' ? 'Added to borrow list: ' : 'Added to return list: ') . $entry['title']
+        );
     }
 
     public function remove(Request $request, string $mode)
@@ -155,7 +158,7 @@ class KioskCartController extends Controller
                     action: $mode,
                     status: 'success',
                     patronId: $patronId,
-                    message: $action->successMessage(),
+                    message: ($mode === 'borrow' ? 'Borrowed' : 'Returned') . ': ' . $item['title'],
                     barcode: $item['barcode'],
                     itemId: $item['item_id']
                 );
@@ -254,16 +257,18 @@ class KioskCartController extends Controller
         return redirect()->route("kiosk.$mode")->withErrors(['barcode' => $message]);
     }
 
-    private function limitMessage(array $patron): string
+        private function limitMessage(array $patron): string
     {
         $category = PatronCategory::for($patron['category_code'] ?? null);
         $onLoan = count($patron['borrowed_books'] ?? []);
+        $max = $category['max_books'];
+        $books = \Illuminate\Support\Str::plural('book', $max);
 
-        if ($onLoan >= $category['max_books']) {
-            return "You have reached your limit of {$category['max_books']} books ({$category['label']}). Please return a book before borrowing more.";
+        if ($onLoan >= $max) {
+            return "You already have {$onLoan} {$books} on loan, which is the most you can borrow at once. Please return a book first.";
         }
 
-        return "Your cart is full. As a {$category['label']} you can hold {$category['max_books']} books at once ({$onLoan} already on loan). Remove a book from your cart to add another.";
+        return "You can borrow up to {$max} {$books} at once, and {$onLoan} " . ($onLoan === 1 ? 'is' : 'are') . " already on loan. Remove a book from your list to add another.";
     }
 
     private function fail(string $mode, string $patronId, string $barcode, ?int $itemId, string $message)

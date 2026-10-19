@@ -20,7 +20,7 @@
                 <p class="font-display text-3xl">{{ $patron['name'] }}</p>
                                 <p class="mt-1 text-xs text-paper/40">Patron ID {{ $patron['patron_id'] }}</p>
                 <p class="mt-1 text-sm font-mono text-paper/70">Card No. {{ $patron['cardnumber'] ?? '' }}</p>
-                <p class="mt-1 text-sm text-paper/70">{{ $category['label'] }}</p>
+                                <p class="mt-1 text-sm text-paper/70">{{ $category['label'] }} &middot; can borrow up to {{ $category['max_books'] }} {{ \Illuminate\Support\Str::plural('book', $category['max_books']) }} at once</p>
             </div>
             <span class="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium {{ ($patron['status'] ?? 'Active') === 'Active' ? 'bg-catalog-teal/25 text-paper' : 'bg-red-500/20 text-red-300' }}">
                 <span class="h-1.5 w-1.5 rounded-full bg-signal-amber"></span>
@@ -47,7 +47,7 @@
                 <svg class="h-5 w-5 flex-shrink-0 text-catalog-teal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                 <div>
                     <p class="font-display text-xl leading-none">{{ $patron['status'] }}</p>
-                    <p class="mt-1 text-xs text-paper/50">Account@if (! is_null($patron['balance'] ?? null)) &middot; Fines {{ number_format($patron['balance'], 2) }} {{ config('kiosk.currency') }}@endif</p>
+                            <p class="mt-1 text-xs text-paper/50">Account @if (! is_null($patron['balance'] ?? null))&middot; Fines {{ number_format($patron['balance'], 2) }} {{ config('kiosk.currency') }}@endif</p>
                 </div>
             </div>
         </div>
@@ -107,24 +107,35 @@
             </a>
         </div>
 
-        @if (isset($recentActivities) && count($recentActivities) > 0)
+                @if (isset($recentActivities) && count($recentActivities) > 0)
             <p class="mt-8 text-xs font-semibold uppercase tracking-wide text-paper/70">Recent activity</p>
             <div class="mt-3 space-y-2">
                 @foreach ($recentActivities as $activity)
-                    <div class="flex items-center justify-between gap-3 rounded-xl bg-paper/10 px-4 py-2.5 text-xs text-paper/90">
-                        <div class="flex items-center gap-2.5 min-w-0 flex-1">
-                            <svg class="h-3.5 w-3.5 flex-shrink-0 text-paper/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                            <span class="truncate flex-1 font-medium" title="{{ $activity->message ?? $activity->action }}">
-                                {{ $activity->message ?? ucfirst(str_replace('_', ' ', $activity->action)) }}
-                            </span>
+                    @php
+                        $label = match ($activity->action) {
+                            'borrow' => 'Borrowed',
+                            'return' => 'Returned',
+                            'renew' => 'Renewed',
+                            default => ucfirst($activity->action),
+                        };
+                        $chip = match ($activity->action) {
+                            'borrow' => 'bg-signal-amber/20 text-signal-amber',
+                            'return' => 'bg-catalog-teal/25 text-catalog-teal',
+                            default => 'bg-paper/15 text-paper',
+                        };
+                        $hasTitle = str_contains((string) $activity->message, ': ');
+                        $title = \Illuminate\Support\Str::after((string) $activity->message, ': ');
+                    @endphp
+                    <div class="flex items-center justify-between gap-3 rounded-xl bg-paper/10 px-4 py-3 text-sm">
+                        <div class="min-w-0 flex-1">
+                            <span class="block truncate font-medium">{{ $hasTitle ? $title : 'Book ' . strtolower($label) }}</span>
+                            @if ($activity->barcode)
+                                <span class="block text-xs font-mono text-paper/50">Barcode: {{ $activity->barcode }}</span>
+                            @endif
                         </div>
-                        <div class="flex items-center gap-2 flex-shrink-0">
-                            <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider {{ $activity->status === 'success' ? 'bg-catalog-teal/20 text-catalog-teal' : 'bg-red-500/20 text-red-300' }}">
-                                {{ $activity->status }}
-                            </span>
-                            <span class="text-paper/50 text-[11px]">
-                                {{ $activity->created_at ? $activity->created_at->format('d M Y, H:i') : '' }}
-                            </span>
+                        <div class="flex flex-shrink-0 flex-col items-end gap-1">
+                            <span class="rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider {{ $chip }}">{{ $label }}</span>
+                            <span class="text-xs text-paper/50">{{ $activity->created_at ? $activity->created_at->format('d M, h:i A') : '' }}</span>
                         </div>
                     </div>
                 @endforeach
