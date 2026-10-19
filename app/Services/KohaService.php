@@ -594,4 +594,35 @@ class KohaService
 
         return $found;
     }
+    /**
+     * Book title for an item ID, remembered for 6 hours. Null when unknown.
+     */
+    public function getItemTitle(int $itemId): ?string
+    {
+        $cached = Cache::get("koha.title.$itemId");
+
+        if (is_string($cached) && $cached !== '') {
+            return $cached;
+        }
+
+        if (Cache::get('koha.titles.down')) {
+            return null;   // Koha failed a moment ago: don't make the dashboard wait
+        }
+
+        try {
+            $item = $this->getItemById($itemId);
+        } catch (\Throwable $e) {
+            Cache::put('koha.titles.down', true, 30);
+
+            return null;
+        }
+
+        $title = $item['biblio']['title'] ?? $item['title'] ?? null;
+
+        if ($title) {
+            Cache::put("koha.title.$itemId", $title, now()->addHours(6));
+        }
+
+        return $title;
+    }
 }

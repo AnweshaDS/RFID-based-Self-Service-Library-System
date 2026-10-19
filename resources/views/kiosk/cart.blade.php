@@ -24,25 +24,19 @@
 
 <x-kiosk-layout :scan-line="false" max-width="max-w-2xl">
     <div class="rounded-2xl bg-paper/8 p-8">
-        <div class="flex items-center justify-between">
-            <div>
-                <p class="font-display text-2xl">{{ $t['heading'] }}</p>
-                <p class="mt-1 text-xs text-paper/60">{{ $t['intro'] }}</p>
-            </div>
-                        <a href="{{ route('kiosk.dashboard') }}" class="kiosk-back-btn">Back to Dashboard</a>
-        </div>
+        <x-kiosk-page-header :title="$t['heading']" :subtitle="$t['intro']" :back="route('kiosk.dashboard')" />
 
         @error('barcode')
-            <p class="mt-6 rounded-lg bg-red-500/10 px-4 py-2.5 text-sm text-red-300">{{ $message }}</p>
+            <p class="mb-4 rounded-lg bg-red-500/10 px-4 py-2.5 text-sm text-red-300">{{ $message }}</p>
         @enderror
 
         @if (session('status'))
-            <p class="mt-6 rounded-lg bg-catalog-teal/20 px-4 py-2.5 text-sm font-medium text-paper">{{ session('status') }}</p>
+            <p class="mb-4 rounded-lg bg-catalog-teal/20 px-4 py-2.5 text-sm font-medium text-paper">{{ session('status') }}</p>
         @endif
 
         @if ($isBorrow)
             @php $spaceLeft = max(0, $limit - count($items)); @endphp
-            <div style="margin-top:20px; border-radius:12px; background:rgba(228,167,46,0.12); border:1px solid rgba(228,167,46,0.35); padding:14px 18px;">
+            <div style="border-radius:12px; background:rgba(228,167,46,0.12); border:1px solid rgba(228,167,46,0.35); padding:14px 18px;">
                 <p style="margin:0; font-size:17px; font-weight:700; color:#ffffff;">
                     You can borrow up to {{ $category['max_books'] }} {{ \Illuminate\Support\Str::plural('book', $category['max_books']) }} at once
                 </p>
@@ -61,12 +55,10 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route("kiosk.$mode.lookup") }}" style="margin-top:24px; display:flex; gap:12px;">
+        <form method="POST" action="{{ route("kiosk.$mode.lookup") }}" style="margin-top:20px; display:flex; gap:12px;">
             @csrf
             <x-kiosk-input name="barcode" id="barcode" placeholder="Scan the book tag or type its barcode" autofocus required />
-            <button type="submit" style="flex-shrink:0; background:#E4A72E; color:#16233E; border:none; border-radius:12px; padding:12px 24px; font-size:14px; font-weight:700; cursor:pointer; position:relative; z-index:999;">
-                Add
-            </button>
+            <button type="submit" class="kiosk-btn" style="background:#E4A72E; color:#16233E; position:relative; z-index:999;">Add</button>
         </form>
 
         <p class="mt-8 text-xs font-semibold uppercase tracking-wide text-paper/50">
@@ -78,25 +70,25 @@
                     $due = ! empty($item['due']) ? rescue(fn () => \Illuminate\Support\Carbon::parse($item['due']), null, false) : null;
                     $isOverdue = $due && $due->copy()->endOfDay()->isPast();
                 @endphp
-                <div class="flex items-center justify-between gap-3 rounded-xl bg-paper/10 px-4 py-3 text-sm">
-                    <div>
-                        <span class="block font-medium">{{ $item['title'] }}</span>
-                        @if (!empty($item['author']))
-                            <span class="block text-xs text-paper/50">by {{ $item['author'] }}</span>
-                        @endif
-                        <span class="block text-xs font-mono text-paper/40">Barcode: {{ $item['barcode'] }}</span>
+                <div class="kiosk-row">
+                    <div class="kiosk-row-main">
+                        <div class="kiosk-row-title">{{ $item['title'] }}</div>
+                        <div class="kiosk-row-meta">
+                            @if (!empty($item['author']))
+                                by {{ $item['author'] }} &middot;
+                            @endif
+                            Barcode: {{ $item['barcode'] }}
+                        </div>
                         @if ($due)
-                            <span class="block text-xs {{ $isOverdue ? 'text-red-300' : 'text-paper/50' }}">
+                            <div class="kiosk-row-meta" style="{{ $isOverdue ? 'color:#fecaca;' : '' }}">
                                 {{ $isOverdue ? 'Overdue since' : 'Due' }} {{ $due->format('d M Y') }}
-                            </span>
+                            </div>
                         @endif
                     </div>
                     <form method="POST" action="{{ route("kiosk.$mode.remove") }}">
                         @csrf
                         <input type="hidden" name="barcode" value="{{ $item['barcode'] }}">
-                        <button type="submit" class="rounded-lg bg-red-500/15 px-3 py-1.5 text-xs font-semibold text-red-300 hover:bg-red-500/25 transition">
-                            Remove
-                        </button>
+                        <button type="submit" class="kiosk-btn bg-red-500/15 text-red-300 hover:bg-red-500/25 transition">Remove</button>
                     </form>
                 </div>
             @empty
@@ -110,13 +102,13 @@
                       onsubmit="this.querySelector('button').disabled = true; document.getElementById('processing').style.display = 'flex';">
                     @csrf
                     <input type="hidden" name="cart_token" value="{{ $token }}">
-                    <button type="submit" style="width:100%; background:#E4A72E; color:#16233E; border:none; border-radius:12px; padding:14px 24px; font-size:15px; font-weight:700; cursor:pointer;">
+                    <button type="submit" class="kiosk-btn" style="width:100%; background:#E4A72E; color:#16233E; padding:14px 24px; font-size:16px;">
                         {{ $t['confirm'] }} ({{ count($items) }})
                     </button>
                 </form>
                 <form method="POST" action="{{ route("kiosk.$mode.clear") }}">
                     @csrf
-                    <button type="submit" style="border:1px solid rgba(246,247,245,0.3); color:#F6F7F5; background:transparent; border-radius:12px; padding:14px 20px; font-size:15px; font-weight:600; cursor:pointer;">
+                    <button type="submit" class="kiosk-btn" style="border:1px solid rgba(246,247,245,0.35); color:#F6F7F5; background:transparent; padding:14px 22px; font-size:16px;">
                         Clear list
                     </button>
                 </form>
@@ -128,17 +120,15 @@
             <div class="mt-3 space-y-2">
                 @foreach ($patron['borrowed_books'] as $book)
                     @continue(empty($book['barcode']) || $book['barcode'] === 'N/A' || in_array(strtolower($book['barcode']), $inCart, true))
-                    <div class="flex items-center justify-between gap-3 rounded-xl bg-paper/10 px-4 py-3 text-sm">
-                        <div>
-                            <span class="block font-medium">{{ $book['title'] }}</span>
-                            <span class="block text-xs font-mono text-paper/40">Barcode: {{ $book['barcode'] }}</span>
+                    <div class="kiosk-row">
+                        <div class="kiosk-row-main">
+                            <div class="kiosk-row-title">{{ $book['title'] }}</div>
+                            <div class="kiosk-row-meta">Barcode: {{ $book['barcode'] }}</div>
                         </div>
                         <form method="POST" action="{{ route('kiosk.return.lookup') }}">
                             @csrf
                             <input type="hidden" name="barcode" value="{{ $book['barcode'] }}">
-                            <button type="submit" class="rounded-lg bg-signal-amber/20 px-3 py-1.5 text-xs font-semibold text-signal-amber hover:bg-signal-amber/30 transition">
-                                Add to return list
-                            </button>
+                            <button type="submit" class="kiosk-btn bg-signal-amber/20 text-signal-amber hover:bg-signal-amber/30 transition">Add to return list</button>
                         </form>
                     </div>
                 @endforeach

@@ -15,6 +15,7 @@ class PatronCategory
             'code' => $key,
             'label' => $category['label'],
             'max_books' => (int) $category['max_books'],
+            'mapped' => isset($categories[$key]),
         ];
     }
 }

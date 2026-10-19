@@ -235,12 +235,38 @@ public function showReceiptView()
     ->latest()
     ->take(10)
     ->get();
+        // Work out the book title for each activity row
+        $loanTitles = collect($patron['borrowed_books'] ?? [])
+            ->mapWithKeys(fn ($b) => [strtolower((string) ($b['barcode'] ?? '')) => $b['title'] ?? null])
+            ->filter();
+
+        $activityTitles = [];
+
+        foreach ($recentActivities as $activity) {
+            $title = null;
+
+            // 1. Title saved with the log entry, e.g. "Borrowed: Essentials of Physical Chemistry"
+            if (str_contains((string) $activity->message, ': ')) {
+                $title = \Illuminate\Support\Str::after($activity->message, ': ');
+            }
+
+            // 2. A book that is still on loan
+            $title = $title ?: ($loanTitles[strtolower((string) $activity->barcode)] ?? null);
+
+            // 3. Ask Koha (remembered), mainly for old rows and for books already returned
+            if (! $title && $activity->item_id) {
+                $title = $this->kohaService->getItemTitle((int) $activity->item_id);
+            }
+
+            $activityTitles[$activity->id] = $title;
+        }
 
         return view('kiosk.dashboard', [
             'patron' => $patron,
             'dueSoonCount' => $dueSoonCount,
 'overdueCount' => $overdueCount,
             'recentActivities' => $recentActivities,
+            'activityTitles' => $activityTitles,
         ]);
     }
 

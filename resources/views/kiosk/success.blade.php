@@ -54,10 +54,10 @@
         @endif
 
         <div style="margin-top:32px; display:flex; flex-direction:column; gap:12px;">
-            <a href="{{ route('kiosk.receipt.pdf', ['download' => 1]) }}"
-               style="display:block; background:#E4A72E; color:#16233E; border-radius:12px; padding:14px 24px; font-size:15px; font-weight:700; text-decoration:none;">
+                        <button type="button" id="print-btn"
+                    style="display:block; width:100%; background:#E4A72E; color:#16233E; border:none; border-radius:12px; padding:14px 24px; font-size:16px; font-weight:700; cursor:pointer;">
                 Print Receipt
-            </a>
+            </button>
             <a href="{{ route('kiosk.receipt.view') }}"
                style="display:block; border:1px solid rgba(246,247,245,0.3); color:#F6F7F5; border-radius:12px; padding:14px 24px; font-size:15px; font-weight:600; text-decoration:none;">
                 View Receipt
@@ -83,6 +83,43 @@
                     document.getElementById('idle-logout-form').submit();
                 }
             }, 1000);
+        })();
+    </script>
+    <iframe id="receipt-frame" style="position:fixed; width:1px; height:1px; border:0; visibility:hidden;"></iframe>
+    <script>
+        (function () {
+            const pdfUrl = "{{ route('kiosk.receipt.pdf') }}";
+            const dashboard = "{{ route('kiosk.dashboard') }}";
+            const frame = document.getElementById('receipt-frame');
+            const btn = document.getElementById('print-btn');
+            let done = false;
+
+            function finish() {
+                if (done) return;
+                done = true;
+                window.location.href = dashboard;
+            }
+
+            btn.addEventListener('click', function () {
+                btn.disabled = true;
+                btn.textContent = 'Printing...';
+
+                frame.addEventListener('load', function () {
+                    setTimeout(function () {
+                        try {
+                            frame.contentWindow.focus();
+                            frame.contentWindow.print();
+                            setTimeout(finish, 4000);
+                        } catch (e) {
+                            // Could not print from the frame: save the PDF instead, then continue
+                            frame.src = pdfUrl + '?download=1';
+                            setTimeout(finish, 2500);
+                        }
+                    }, 400);
+                }, { once: true });
+
+                frame.src = pdfUrl;
+            });
         })();
     </script>
     @include('kiosk.partials.scan-notice')
