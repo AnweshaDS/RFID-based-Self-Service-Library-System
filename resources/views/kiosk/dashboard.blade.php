@@ -125,10 +125,11 @@
                         };
                         $hasTitle = str_contains((string) $activity->message, ': ');
                         $title = \Illuminate\Support\Str::after((string) $activity->message, ': ');
+                        $loanTitle = collect($patron['borrowed_books'])->first(fn ($b) => strtolower((string) ($b['barcode'] ?? '')) === strtolower((string) $activity->barcode))['title'] ?? null;
                     @endphp
                     <div class="flex items-center justify-between gap-3 rounded-xl bg-paper/10 px-4 py-3 text-sm">
                         <div class="min-w-0 flex-1">
-                            <span class="block truncate font-medium">{{ $hasTitle ? $title : 'Book ' . strtolower($label) }}</span>
+                                                        <span class="block truncate font-medium">{{ $hasTitle ? $title : ($loanTitle ?? 'Book ' . strtolower($label)) }}</span>
                             @if ($activity->barcode)
                                 <span class="block text-xs font-mono text-paper/50">Barcode: {{ $activity->barcode }}</span>
                             @endif

@@ -162,12 +162,11 @@
         <p class="footer-note">Please keep this receipt for your records.<br>Khulna University of Engineering &amp; Technology</p>
     </div>
 
-    <div class="actions">
-        <button type="button" class="print-btn" onclick="window.print()">Print</button>
-        <a href="{{ route('kiosk.dashboard') }}">Back to Dashboard</a>
+        <div class="actions">
+        <a href="{{ route('kiosk.success') }}">Back</a>
     </div>
     @if (session()->has('kiosk_patron'))
-        @include('kiosk.partials.idle-timer')
+        @include('kiosk.partials.idle-timer', ['hideLogout' => true])
     @endif
 </body>
 </html>

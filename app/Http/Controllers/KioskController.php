@@ -303,10 +303,10 @@ public function receiptPdf()
     $filename = 'receipt-' . ($receipt['patron_id'] ?? 'unknown') . '-' . now()->format('Ymd-His') . '.pdf';
 
     Storage::disk('local')->put('receipts/' . $filename, $output);
-
+    $disposition = request()->boolean('download') ? 'attachment' : 'inline';
     return response($output, 200)
         ->header('Content-Type', 'application/pdf')
-        ->header('Content-Disposition', 'inline; filename="' . $filename . '"');
+                ->header('Content-Disposition', $disposition . '; filename="' . $filename . '"');
 }
 
     public function showBorrow()

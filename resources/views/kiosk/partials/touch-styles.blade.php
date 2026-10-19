@@ -26,4 +26,15 @@
     .font-medium { font-weight: 600 !important; }
     span.block.font-medium { color: #ffffff; }
     .uppercase.tracking-wide { color: #E4A72E !important; letter-spacing: 0.08em; }
+    /* White "Back" button, always on one line */
+    .kiosk-back-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        flex-shrink: 0; white-space: nowrap;
+        min-height: 48px; padding: 10px 22px;
+        background: #ffffff; color: #16233E !important;
+        border-radius: 12px; font-size: 15px; font-weight: 700;
+        text-decoration: none !important;
+        touch-action: manipulation;
+    }
+    .kiosk-back-btn:active { transform: scale(0.97); }
 </style>

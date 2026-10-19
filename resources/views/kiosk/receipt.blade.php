@@ -7,7 +7,7 @@
         body { margin: 0; background: #16233E; color: #F6F7F5; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
         .msg { margin-bottom: 16px; font-size: 14px; }
         .actions { margin-top: 16px; display: flex; gap: 16px; }
-        .actions a { color: #F6F7F5; text-decoration: underline; font-size: 13px; }
+                .actions a { color: #16233E; background: #ffffff; text-decoration: none; font-size: 15px; font-weight: 700; padding: 12px 22px; border-radius: 12px; white-space: nowrap; }
     </style>
 </head>
 <body>

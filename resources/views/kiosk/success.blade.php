@@ -54,7 +54,7 @@
         @endif
 
         <div style="margin-top:32px; display:flex; flex-direction:column; gap:12px;">
-                        <a href="{{ route('kiosk.receipt') }}"
+            <a href="{{ route('kiosk.receipt.pdf', ['download' => 1]) }}"
                style="display:block; background:#E4A72E; color:#16233E; border-radius:12px; padding:14px 24px; font-size:15px; font-weight:700; text-decoration:none;">
                 Print Receipt
             </a>

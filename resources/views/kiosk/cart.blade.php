@@ -29,7 +29,7 @@
                 <p class="font-display text-2xl">{{ $t['heading'] }}</p>
                 <p class="mt-1 text-xs text-paper/60">{{ $t['intro'] }}</p>
             </div>
-            <a href="{{ route('kiosk.dashboard') }}" class="text-xs text-paper/50 underline hover:text-paper">Back to Dashboard</a>
+                        <a href="{{ route('kiosk.dashboard') }}" class="kiosk-back-btn">Back to Dashboard</a>
         </div>
 
         @error('barcode')
