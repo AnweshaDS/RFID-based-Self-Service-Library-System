@@ -10,11 +10,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Passport\HasApiTokens;
+use Admin9\OidcServer\Contracts\OidcUserInterface;
+use Admin9\OidcServer\Concerns\HasOidcClaims;
 
-class User extends Authenticatable
+class User extends Authenticatable implements OidcUserInterface
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, HasOidcClaims, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -28,6 +31,7 @@ class User extends Authenticatable
         'google_id',
         'koha_patron_id',
         'department_id',
+        'koha_cardnumber',
     ];
 
     /**
@@ -89,5 +93,15 @@ class User extends Authenticatable
                 $query->whereRaw('LOWER(permissions.name) = ?', [strtolower($permission)]);
             })
             ->exists();
+    }
+
+    /** @return mixed */
+    protected function resolveOidcClaim(string $claim): mixed
+    {
+        return match ($claim) {
+            'preferred_username' => $this->koha_cardnumber,
+            'email' => $this->email,
+            default => parent::resolveOidcClaim($claim),
+        };
     }
 }
