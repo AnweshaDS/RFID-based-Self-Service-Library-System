@@ -50,6 +50,7 @@ class KohaAuthService
             'email' => $this->pickEmail($patron['email'] ?? null, $patronId),
             'password' => Str::random(40),
             'koha_patron_id' => $patronId,
+            'koha_cardnumber' => $cardnumber,
         ]);
 
         $user->forceFill(['email_verified_at' => now()])->save();
