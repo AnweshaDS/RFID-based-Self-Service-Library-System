@@ -42,6 +42,12 @@
                             <span class="flex-1">Assign a Task</span>
                         </a>
                     @endcan
+                    @if ($hasPatronAccess)
+                        <a href="{{ route('patron-verification') }}" class="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-800 transition hover:border-indigo-400 hover:bg-indigo-50">
+                            <svg class="h-4 w-4 flex-shrink-0 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+                            <span class="flex-1">Patron Verification</span>
+                        </a>
+                    @endif
                 </div>
             </div>
 

@@ -42,6 +42,9 @@ Route::middleware(['auth', 'permission:tasks.assign'])->prefix('tasks')->name('t
     Route::get('/', [\App\Http\Controllers\TaskController::class, 'index'])->name('index');
     Route::get('/create', [\App\Http\Controllers\TaskController::class, 'create'])->name('create');
     Route::post('/', [\App\Http\Controllers\TaskController::class, 'store'])->name('store');
+    Route::get('/patron-verification', [\App\Http\Controllers\PatronVerificationController::class, 'show'])->name('patron-verification');
+    Route::post('/patron-verification', [\App\Http\Controllers\PatronVerificationController::class, 'search'])->name('patron-verification.search');
+    Route::get('/patron-verification/{patronId}/photo', [\App\Http\Controllers\PatronVerificationController::class, 'photo'])->name('patron-verification.photo');
 });
 
 Route::middleware('auth')->group(function () {

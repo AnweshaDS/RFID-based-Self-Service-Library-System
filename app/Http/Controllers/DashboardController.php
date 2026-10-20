@@ -35,6 +35,7 @@ class DashboardController extends Controller
             ->values();
 
         $hasCirculationAccess = $menuItems->contains('label', 'Circulation');
+        $hasPatronAccess = $menuItems->contains('label', 'Patrons');
         $canAssignTasks = $user->hasPermission('tasks.assign');
         $isAdmin = $roleNames->contains('Admin');
         $isSubController = $roleNames->contains('Sub-Controller');

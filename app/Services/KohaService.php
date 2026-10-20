@@ -374,6 +374,36 @@ class KohaService
         return $checkouts;
     }
 
+        /**
+     * Check whether a patron has a stored image, without downloading it.
+     *
+     * @throws Exception
+     */
+    public function checkPatronImageExists(int $patronId): bool
+    {
+        $token = $this->getAccessToken();
+        $response = Http::withToken($token)->head("{$this->baseUrl}/api/v1/patrons/{$patronId}/image");
+
+        return $response->successful();
+    }
+
+    /**
+     * Fetch a patron's stored image, or null if none exists.
+     *
+     * @throws Exception
+     */
+    public function getPatronImage(int $patronId): ?string
+    {
+        $token = $this->getAccessToken();
+        $response = Http::withToken($token)->get("{$this->baseUrl}/api/v1/patrons/{$patronId}/image");
+
+        if (! $response->successful()) {
+            return null;
+        }
+
+        return $response->body();
+    }
+
     /**
      * Check in / return an item.
      *
