@@ -6,10 +6,11 @@ return [
 
     // Koha patron category code => label shown on screen, and max books on loan at once.
     // Replace UG / PG / T with the real codes from Koha.
-    'categories' => [
-        'UG' => ['label' => 'Undergraduate', 'max_books' => 3],
-        'PG' => ['label' => 'Postgraduate',  'max_books' => 5],
-        'T'  => ['label' => 'Teacher',       'max_books' => 15],
+        'categories' => [
+        'ST' => ['label' => 'Postgraduate',  'max_books' => 5],    // confirmed: STU003 (Sadia)
+        'UG' => ['label' => 'Undergraduate', 'max_books' => 3],    // code still to confirm (step 2)
+        'T'  => ['label' => 'Teacher',       'max_books' => 15],   // code still to confirm (step 2)
+    
             // Shown next to fine amounts
     'currency' => env('KIOSK_CURRENCY', 'BDT'),
     ],

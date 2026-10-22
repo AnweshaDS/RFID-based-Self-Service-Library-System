@@ -85,40 +85,42 @@
             }, 1000);
         })();
     </script>
-    <iframe id="receipt-frame" style="position:fixed; width:1px; height:1px; border:0; visibility:hidden;"></iframe>
+        <p id="print-error" style="display:none; margin-top:12px; text-align:center; font-size:14px; color:#fecaca;"></p>
     <script>
         (function () {
-            const pdfUrl = "{{ route('kiosk.receipt.pdf') }}";
+            const pdfUrl = "{{ route('kiosk.receipt.pdf', ['download' => 1]) }}";
             const dashboard = "{{ route('kiosk.dashboard') }}";
-            const frame = document.getElementById('receipt-frame');
             const btn = document.getElementById('print-btn');
-            let done = false;
+            const errorEl = document.getElementById('print-error');
 
-            function finish() {
-                if (done) return;
-                done = true;
-                window.location.href = dashboard;
-            }
-
-            btn.addEventListener('click', function () {
+            btn.addEventListener('click', async function () {
                 btn.disabled = true;
                 btn.textContent = 'Printing...';
+                errorEl.style.display = 'none';
 
-                frame.addEventListener('load', function () {
-                    setTimeout(function () {
-                        try {
-                            frame.contentWindow.focus();
-                            frame.contentWindow.print();
-                            setTimeout(finish, 4000);
-                        } catch (e) {
-                            // Could not print from the frame: save the PDF instead, then continue
-                            frame.src = pdfUrl + '?download=1';
-                            setTimeout(finish, 2500);
-                        }
-                    }, 400);
-                }, { once: true });
+                try {
+                    const res = await fetch(pdfUrl, { credentials: 'same-origin' });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
 
-                frame.src = pdfUrl;
+                    const blob = await res.blob();
+                    const header = res.headers.get('Content-Disposition') || '';
+                    const match = header.match(/filename="?([^";]+)"?/i);
+
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = match ? match[1] : 'receipt.pdf';
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+
+                    // The download has started: go back to the dashboard
+                    setTimeout(function () { window.location.href = dashboard; }, 800);
+                } catch (e) {
+                    btn.disabled = false;
+                    btn.textContent = 'Print Receipt';
+                    errorEl.textContent = 'Could not create the receipt. Please try again or ask a librarian.';
+                    errorEl.style.display = 'block';
+                }
             });
         })();
     </script>

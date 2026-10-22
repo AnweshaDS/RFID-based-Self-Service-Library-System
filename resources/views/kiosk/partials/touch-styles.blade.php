@@ -32,10 +32,10 @@
         border-radius: 12px; font-size: 15px; font-weight: 700;
         text-decoration: none !important; touch-action: manipulation;
     }
-    .kiosk-page-header { margin-bottom: 22px; padding-bottom: 20px; border-bottom: 1px solid rgba(246, 247, 245, 0.18); }
-    .kiosk-page-header .kiosk-back-btn { margin-bottom: 20px; }
-    .kiosk-page-title { margin: 0; font-size: 30px; line-height: 1.2; font-weight: 700; color: #ffffff; }
-    .kiosk-page-subtitle { margin: 8px 0 0; font-size: 16px; line-height: 1.5; color: rgba(246, 247, 245, 0.85); }
+        .kiosk-page-header { margin-bottom: 22px; padding-bottom: 20px; border-bottom: 1px solid rgba(246, 247, 245, 0.18); text-align: center; }
+    .kiosk-page-header .kiosk-back-btn { display: flex; width: fit-content; margin: 0 auto 20px 0; }
+    .kiosk-page-title { margin: 0; font-size: 32px; line-height: 1.2; font-weight: 700; color: #ffffff; text-align: center; }
+    .kiosk-page-subtitle { margin: 10px auto 0; max-width: 560px; font-size: 16px; line-height: 1.5; color: rgba(246, 247, 245, 0.85); text-align: center; }
 
     /* ---------- List rows: the title shrinks and wraps, the buttons never break ---------- */
     .kiosk-row {
