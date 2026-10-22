@@ -28,8 +28,8 @@ class KioskController extends Controller
     {
         return view('kiosk.welcome');
     }
-public function scan(Request $request)
-{
+    public function scan(Request $request)
+    {
     $expected = (string) config('services.kiosk.token');
     abort_unless(
         $expected !== '' && hash_equals($expected, (string) $request->header('X-Kiosk-Token')),
@@ -71,10 +71,10 @@ public function scan(Request $request)
     ], 15);
 
     return response()->json(['ok' => false, 'message' => 'Tag not registered'], 404);
-}
+    }
 
-public function pollScan(Request $request)
-{
+    public function pollScan(Request $request)
+    {
     $wanted = $request->query('type');   // 'patron', 'book', or 'none' (already logged in)
 
     $scan = Cache::get('kiosk.pending_scan');
@@ -724,6 +724,8 @@ Session::put('kiosk_patron', $patron);
 {
     Session::invalidate();
     Session::regenerateToken();
+    Session::forget('kiosk_verification_capture_borrow');
+    Session::forget('kiosk_verification_capture_return');
     Cache::forget('kiosk.pending_scan');
 
     return redirect()->route('kiosk.welcome');

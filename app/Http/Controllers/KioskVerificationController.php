@@ -50,6 +50,7 @@ class KioskVerificationController extends Controller
             'face_detected' => $request->boolean('face_detected', true),
         ]);
 
+        Session::put("kiosk_verification_capture_{$action}", $capture->id);
         return response()->json(['ok' => true, 'capture_id' => $capture->id]);
     }
 }

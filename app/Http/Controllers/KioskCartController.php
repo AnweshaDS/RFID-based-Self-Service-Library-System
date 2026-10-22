@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use App\Support\PatronCategory;
+use App\Models\PatronVerificationCapture;
 
 class KioskCartController extends Controller
 {
@@ -25,19 +26,22 @@ class KioskCartController extends Controller
 
     public function show(string $mode)
     {
-        if (! $patron = Session::get('kiosk_patron')) {
-            return $this->needsLogin();
-        }
+    if (! $patron = Session::get('kiosk_patron')) {
+        return $this->needsLogin();
+    }
 
-                return view('kiosk.cart', [
-            'mode' => $mode,
-            'patron' => $patron,
-            'items' => $this->cart->items($mode),
-            'token' => $this->cart->token($mode),
-            'category' => PatronCategory::for($patron['category_code'] ?? null),
-            'onLoan' => count($patron['borrowed_books'] ?? []),
-            'limit' => $this->cart->limit($mode, $patron),
-        ]);
+    $captureId = Session::get("kiosk_verification_capture_{$mode}");
+
+    return view('kiosk.cart', [
+        'mode' => $mode,
+        'patron' => $patron,
+        'items' => $this->cart->items($mode),
+        'token' => $this->cart->token($mode),
+        'category' => PatronCategory::for($patron['category_code'] ?? null),
+        'onLoan' => count($patron['borrowed_books'] ?? []),
+        'limit' => $this->cart->limit($mode, $patron),
+        'verified' => (bool) $captureId,
+    ]);
     }
 
     public function add(Request $request, string $mode)
@@ -116,6 +120,15 @@ class KioskCartController extends Controller
         }
 
         $patronId = (string) ($patron['patron_id'] ?? '');
+        $captureId = Session::get("kiosk_verification_capture_{$mode}");
+        $verified = $captureId && PatronVerificationCapture::where('id', $captureId)
+            ->where('patron_id', $patronId)
+            ->where('action', $mode)
+            ->exists();
+
+        if (! $verified) {
+            return $this->reject($mode, 'Please complete the identity verification photo before confirming.');
+        }
         $lock = Cache::lock("kiosk-confirm-{$patronId}", 180);
 
         if (! $lock->get()) {
@@ -141,6 +154,7 @@ class KioskCartController extends Controller
             $lock->release();
         }
 
+        Session::forget("kiosk_verification_capture_{$mode}");
         return redirect()->route('kiosk.success');
     }
 

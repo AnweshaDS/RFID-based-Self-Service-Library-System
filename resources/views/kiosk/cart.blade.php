@@ -96,13 +96,22 @@
             @endforelse
         </div>
 
-        @if (count($items) > 0)
+                @if (count($items) > 0)
+            @if (! $verified)
+                @include('kiosk.partials.verification-capture', ['action' => $mode, 'confirmFormId' => 'confirmForm'])
+            @else
+                <div class="rounded-xl bg-catalog-teal/15 border border-catalog-teal/30 px-4 py-3 text-sm text-catalog-teal font-medium mt-4">
+                    ✓ Identity verification photo captured for this visit.
+                </div>
+            @endif
+
             <div style="margin-top:24px; display:flex; gap:12px;">
-                <form method="POST" action="{{ route("kiosk.$mode.confirm.store") }}" style="flex:1;"
+                <form method="POST" action="{{ route("kiosk.$mode.confirm.store") }}" id="confirmForm" style="flex:1;"
                       onsubmit="this.querySelector('button').disabled = true; document.getElementById('processing').style.display = 'flex';">
                     @csrf
                     <input type="hidden" name="cart_token" value="{{ $token }}">
-                    <button type="submit" class="kiosk-btn" style="width:100%; background:#E4A72E; color:#16233E; padding:14px 24px; font-size:16px;">
+                    <button type="submit" id="confirmSubmitBtn" class="kiosk-btn" @unless($verified) disabled @endunless
+                            style="width:100%; background:#E4A72E; color:#16233E; padding:14px 24px; font-size:16px; opacity:{{ $verified ? '1' : '0.5' }};">
                         {{ $t['confirm'] }} ({{ count($items) }})
                     </button>
                 </form>
@@ -114,7 +123,7 @@
                 </form>
             </div>
         @endif
-
+        
         @if (! $isBorrow)
             <p class="mt-8 text-xs font-semibold uppercase tracking-wide text-paper/50">Your borrowed books</p>
             <div class="mt-3 space-y-2">

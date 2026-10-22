@@ -14,7 +14,7 @@
     </div>
 
     <p id="verifyStatus" class="mt-2 text-sm font-medium text-paper/80">Loading camera...</p>
-    <input type="hidden" name="verification_capture_id" id="verification_capture_id">
+    <input type="hidden" name="verification_capture_id" id="verification_capture_id" @if(!empty($confirmFormId)) form="{{ $confirmFormId }}" @endif>
 </div>
 
 <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
@@ -103,6 +103,11 @@
                     status.textContent = '✓ Identity photo captured.';
                     status.className = 'mt-2 text-sm font-medium text-green-400';
                     document.dispatchEvent(new CustomEvent('verification-captured', { detail: { captureId: result.capture_id } }));
+                    const confirmBtn = document.getElementById('confirmSubmitBtn');
+                    if (confirmBtn) {
+                        confirmBtn.disabled = false;
+                        confirmBtn.style.opacity = '1';
+                    }
                 } else {
                     status.textContent = 'Could not save photo. Please contact library staff.';
                 }
