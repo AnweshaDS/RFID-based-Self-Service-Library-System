@@ -48,6 +48,12 @@
                             <span class="flex-1">Patron Verification</span>
                         </a>
                     @endif
+                    @if ($hasPatronAccess)
+                        <a href="{{ route('patron-verification.history') }}" class="flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-800 transition hover:border-indigo-400 hover:bg-indigo-50">
+                            <svg class="h-4 w-4 flex-shrink-0 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
+                            <span class="flex-1">Verification History</span>
+                        </a>
+                    @endif
                 </div>
             </div>
 

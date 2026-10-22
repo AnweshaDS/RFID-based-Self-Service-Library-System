@@ -54,6 +54,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::get('/my-tasks', [\App\Http\Controllers\StaffController::class, 'myTasks'])->name('my-tasks');
     Route::patch('/my-tasks/{task}/status', [\App\Http\Controllers\TaskController::class, 'updateStatus'])->name('tasks.update-status');
+    Route::get('/patron-verification/history', [\App\Http\Controllers\PatronVerificationReviewController::class, 'index'])->name('patron-verification.history');
+    Route::get('/patron-verification/history/{capture}/photo', [\App\Http\Controllers\PatronVerificationReviewController::class, 'photo'])->name('patron-verification.history.photo');
 
 });
 
