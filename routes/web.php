@@ -18,7 +18,8 @@ Route::prefix('kiosk')->name('kiosk.')->group(function () {
         Route::get('/dashboard', [KioskController::class, 'dashboard'])->name('dashboard');
         Route::get('/receipt', [KioskController::class, 'printReceipt'])->name('receipt');
         Route::get('/receipt/pdf', [KioskController::class, 'receiptPdf'])->name('receipt.pdf');
-Route::get('/success', [KioskController::class, 'showSuccess'])->name('success');
+        Route::get('/success', [KioskController::class, 'showSuccess'])->name('success');
+        Route::post('/verification/capture/{action}', [\App\Http\Controllers\KioskVerificationController::class, 'store'])->name('verification.capture');
             
             foreach (['borrow', 'return'] as $mode) {
             Route::get("/$mode", [KioskCartController::class, 'show'])->defaults('mode', $mode)->name($mode);
