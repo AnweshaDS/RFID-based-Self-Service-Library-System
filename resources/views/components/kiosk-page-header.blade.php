@@ -1,4 +1,4 @@
-@props(['title', 'subtitle' => null, 'back' => null, 'backLabel' => 'Back to Dashboard'])
+@props(['title', 'subtitle' => null, 'back' => null, 'backLabel' => 'Back'])
 
 <div class="kiosk-page-header">
     @if ($back)

@@ -17,7 +17,7 @@ return [
     | Falls back to the default auth provider model if not set.
     |
     */
-    'user_model' => null,
+    'user_model' => \App\Models\User::class,
 
     /*
     |--------------------------------------------------------------------------

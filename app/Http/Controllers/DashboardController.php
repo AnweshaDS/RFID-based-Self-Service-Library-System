@@ -116,7 +116,8 @@ class DashboardController extends Controller
             'circulationChart' => $circulationChart,
             'roleDistributionChart' => $roleDistributionChart,
             'delegationChart' => $delegationChart,
-            'newPatronsChart' => $newPatronsChart,
+            'newPatronsChart' => $newPatronsChart,            			    'hasCirculationAccess' => $hasCirculationAccess,
+            'hasPatronAccess' => $hasPatronAccess,
             'taskCompletionChart' => $taskCompletionChart,
             'kohaStaffUrl' => rtrim((string) config('services.koha.staff_url'), '/'),
         ]);

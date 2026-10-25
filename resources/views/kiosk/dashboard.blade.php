@@ -143,11 +143,5 @@
                 @endforeach
             </div>
         @endif
-        <form method="POST" action="{{ route('kiosk.logout') }}" class="mt-8">
-            @csrf
-            <button type="submit" class="w-full text-center text-sm text-paper/50 underline hover:text-paper">
-                Log out
-            </button>
-        </form>
-    </div>
+          </div>
 </x-kiosk-layout>

@@ -95,13 +95,4 @@ class User extends Authenticatable implements OidcUserInterface
             ->exists();
     }
 
-    /** @return mixed */
-    protected function resolveOidcClaim(string $claim): mixed
-    {
-        return match ($claim) {
-            'preferred_username' => $this->koha_cardnumber,
-            'email' => $this->email,
-            default => parent::resolveOidcClaim($claim),
-        };
-    }
-}
+        }
