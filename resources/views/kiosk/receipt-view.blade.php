@@ -88,6 +88,13 @@
             border-color: #16233E;
         }
 
+                .actions { position: fixed; top: 16px; left: 16px; max-width: none; margin: 0; z-index: 9999; }
+        .actions a {
+            flex: none; padding: 12px 22px; font-size: 16px;
+            background: rgba(10,18,36,0.85); color: #F6F7F5;
+            border: 1px solid rgba(246,247,245,0.3); border-radius: 10px;
+        }
+
         @media print {
             body { background: #ffffff; padding: 0; }
             .actions { display: none; }
