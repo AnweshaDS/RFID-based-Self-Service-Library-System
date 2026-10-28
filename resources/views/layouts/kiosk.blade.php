@@ -27,6 +27,5 @@
     </div>
 
     @stack('scripts')
-    @include('kiosk.partials.touch-styles')
 </body>
 </html>

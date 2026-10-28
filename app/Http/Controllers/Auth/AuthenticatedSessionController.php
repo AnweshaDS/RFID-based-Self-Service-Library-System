@@ -35,13 +35,15 @@ class AuthenticatedSessionController extends Controller
      * Destroy an authenticated session.
      */
     public function destroy(Request $request): RedirectResponse
-    {
-        Auth::guard('web')->logout();
+{
+    Auth::guard('web')->logout();
 
-        $request->session()->invalidate();
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
 
-        $request->session()->regenerateToken();
-
-        return redirect()->route('login');
-    }
+    return redirect()->route('login')->with(
+        'koha_logout_url',
+        'http://100.94.237.34:8081/cgi-bin/koha/mainpage.pl?logout.x=1'
+    );
+}
 }

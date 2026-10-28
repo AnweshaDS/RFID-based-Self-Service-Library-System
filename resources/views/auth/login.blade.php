@@ -3,6 +3,9 @@
     <p class="mt-2 text-sm text-slate">Staff sign-in for the KUET Library system.</p>
 
     <x-auth-session-status class="mt-6" :status="session('status')" />
+    @if (session('koha_logout_url'))
+        <iframe src="{{ session('koha_logout_url') }}" style="display:none;" title="Koha logout"></iframe>
+    @endif
 
     <form method="POST" action="{{ route('login') }}" class="mt-6 space-y-4">
         @csrf

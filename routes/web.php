@@ -56,6 +56,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/my-tasks/{task}/status', [\App\Http\Controllers\TaskController::class, 'updateStatus'])->name('tasks.update-status');
     Route::get('/patron-verification/history', [\App\Http\Controllers\PatronVerificationReviewController::class, 'index'])->name('patron-verification.history');
     Route::get('/patron-verification/history/{capture}/photo', [\App\Http\Controllers\PatronVerificationReviewController::class, 'photo'])->name('patron-verification.history.photo');
+    Route::get('/patron-verification', [\App\Http\Controllers\PatronVerificationController::class, 'show'])->name('patron-verification');
+    Route::post('/patron-verification', [\App\Http\Controllers\PatronVerificationController::class, 'search'])->name('patron-verification.search');
+    Route::get('/patron-verification/{patronId}/photo', [\App\Http\Controllers\PatronVerificationController::class, 'photo'])->name('patron-verification.photo');
 
 });
 
