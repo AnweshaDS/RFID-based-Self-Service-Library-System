@@ -59,7 +59,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/patron-verification', [\App\Http\Controllers\PatronVerificationController::class, 'show'])->name('patron-verification');
     Route::post('/patron-verification', [\App\Http\Controllers\PatronVerificationController::class, 'search'])->name('patron-verification.search');
     Route::get('/patron-verification/{patronId}/photo', [\App\Http\Controllers\PatronVerificationController::class, 'photo'])->name('patron-verification.photo');
-
 });
 
 Route::middleware(['auth', 'role:Admin,Librarian'])->prefix('admin')->name('admin.')->group(function () {
