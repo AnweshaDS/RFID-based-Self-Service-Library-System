@@ -33,17 +33,25 @@ class AuthenticatedSessionController extends Controller
 
     /**
      * Destroy an authenticated session.
+     *
+     * After the Laravel session ends, the browser is sent to Koha's logout address as a
+     * normal page visit, so Koha ends the session for this browser too. The address
+     * comes from the same setting as the Koha quick links, so both use the same host.
+     * If that setting is empty, the user just goes to the Laravel login page.
      */
     public function destroy(Request $request): RedirectResponse
-{
-    Auth::guard('web')->logout();
+    {
+        Auth::guard('web')->logout();
 
-    $request->session()->invalidate();
-    $request->session()->regenerateToken();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
-    return redirect()->route('login')->with(
-        'koha_logout_url',
-        'http://100.94.237.34:8081/cgi-bin/koha/mainpage.pl?logout.x=1'
-    );
-}
+        $kohaStaffUrl = rtrim((string) config('services.koha.staff_url'), '/');
+
+        if ($kohaStaffUrl !== '') {
+            return redirect()->away($kohaStaffUrl . '/cgi-bin/koha/mainpage.pl?logout.x=1');
+        }
+
+        return redirect()->route('login');
+    }
 }
