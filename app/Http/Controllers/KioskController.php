@@ -421,6 +421,12 @@ public function showSuccess()
         return redirect()->route('kiosk.dashboard');
     }
 
+    $items = collect($receipt['items'] ?? []);
+
+    if ($items->isNotEmpty() && $items->where('ok', true)->isEmpty()) {
+        return view('kiosk.failure', ['receipt' => $receipt]);
+    }
+
     return view('kiosk.success', ['receipt' => $receipt]);
 }
 
