@@ -31,6 +31,9 @@
 
     setInterval(async function () {
         if (submitting) return;
+        // Only accept scans while the scan field is showing (after "Borrow/Return another book")
+        const field = document.getElementById('scan-field');
+        if (field && field.style.display === 'none') return;
         try {
             const res = await fetch('/api/kiosk/poll?type=book', { headers: { 'Accept': 'application/json' } });
             if (!res.ok) return;

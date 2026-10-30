@@ -34,6 +34,11 @@
             <p class="mb-4 rounded-lg bg-catalog-teal/20 px-4 py-2.5 text-sm font-medium text-paper">{{ session('status') }}</p>
         @endif
 
+                @if (! $isBorrow && empty($patron['borrowed_books']) && count($items) === 0)
+            <p style="margin:40px 0 24px; text-align:center; font-size:22px; font-weight:600; color:#ffffff;">
+                You have no borrowed books.
+            </p>
+        @else
         @if ($isBorrow)
             @php $spaceLeft = max(0, $limit - count($items)); @endphp
             <div style="border-radius:12px; background:rgba(228,167,46,0.12); border:1px solid rgba(228,167,46,0.35); padding:14px 18px;">
@@ -55,12 +60,35 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route("kiosk.$mode.lookup") }}" style="margin-top:20px; display:flex; gap:12px;">
+                       @php
+            $showField = count($items) === 0;
+            $canAdd = $isBorrow
+                ? true
+                : collect($patron['borrowed_books'])->contains(
+                    fn ($b) => ! empty($b['barcode']) && $b['barcode'] !== 'N/A' && ! in_array(strtolower($b['barcode']), $inCart, true)
+                );
+        @endphp
+        @if ($canAdd)
+        <form method="POST" action="{{ route("kiosk.$mode.lookup") }}" style="margin-top:20px;">
             @csrf
-            <x-kiosk-input name="barcode" id="barcode" placeholder="Scan the book tag or type its barcode" autofocus required />
-            <button type="submit" class="kiosk-btn" style="background:#E4A72E; color:#16233E; position:relative; z-index:999;">Add</button>
+            <div id="scan-field" style="{{ $showField ? '' : 'display:none;' }}">
+                <x-kiosk-input name="barcode" id="barcode" placeholder="Scan the book tag or type its barcode" autofocus required />
+            </div>
+            @unless ($showField)
+                <button type="button" id="scan-another" class="kiosk-btn"
+                        style="width:100%; background:#E4A72E; color:#16233E; padding:16px 24px; font-size:18px; font-weight:700;">
+                    {{ $isBorrow ? 'Borrow another book' : 'Return another book' }}
+                </button>
+                <script>
+                    document.getElementById('scan-another').addEventListener('click', function () {
+                        this.style.display = 'none';
+                        document.getElementById('scan-field').style.display = '';
+                        document.getElementById('barcode').focus();
+                    });
+                </script>
+                        @endunless
         </form>
-
+        @endif
         <p class="mt-8 text-xs font-semibold uppercase tracking-wide text-paper/50">
             {{ $t['list'] }} ({{ count($items) }})
         </p>
@@ -110,7 +138,7 @@
                       onsubmit="this.querySelector('button').disabled = true; document.getElementById('processing').style.display = 'flex';">
                     @csrf
                     <input type="hidden" name="cart_token" value="{{ $token }}">
-                    <button type="submit" id="confirmSubmitBtn" class="kiosk-btn" @unless($verified) disabled @endunless
+                                       <button type="button" id="confirmSubmitBtn" class="kiosk-btn" onclick="document.getElementById('confirmModal').style.display = 'flex';" @unless($verified) disabled @endunless
                             style="width:100%; background:#E4A72E; color:#16233E; padding:14px 24px; font-size:16px; opacity:{{ $verified ? '1' : '0.5' }};">
                         {{ $t['confirm'] }} ({{ count($items) }})
                     </button>
@@ -125,10 +153,14 @@
         @endif
         
         @if (! $isBorrow)
-            <p class="mt-8 text-xs font-semibold uppercase tracking-wide text-paper/50">Your borrowed books</p>
+                        <p class="mt-8 text-xs font-semibold uppercase tracking-wide text-paper/50">Remaining Borrowed Books</p>
             <div class="mt-3 space-y-2">
-                @foreach ($patron['borrowed_books'] as $book)
-                    @continue(empty($book['barcode']) || $book['barcode'] === 'N/A' || in_array(strtolower($book['barcode']), $inCart, true))
+                                @php
+                    $returnable = collect($patron['borrowed_books'])->reject(
+                        fn ($b) => empty($b['barcode']) || $b['barcode'] === 'N/A' || in_array(strtolower($b['barcode']), $inCart, true)
+                    );
+                @endphp
+                @forelse ($returnable as $book)
                     <div class="kiosk-row">
                         <div class="kiosk-row-main">
                             <div class="kiosk-row-title">{{ $book['title'] }}</div>
@@ -140,10 +172,39 @@
                             <button type="submit" class="kiosk-btn bg-signal-amber/20 text-signal-amber hover:bg-signal-amber/30 transition">Add to return list</button>
                         </form>
                     </div>
-                @endforeach
+                                @empty
+                    <p class="text-sm text-paper/50">No books to show.</p>
+                @endforelse
             </div>
         @endif
+        @endif
     </div>
+
+        <div id="confirmModal" style="display:none; position:fixed; inset:0; z-index:99998; background:rgba(10,18,36,0.85); align-items:center; justify-content:center; padding:24px;">
+        <div style="position:relative; width:100%; max-width:440px; background:#16233E; border:1px solid rgba(246,247,245,0.25); border-radius:20px; padding:40px 28px 28px; text-align:center; color:#F6F7F5;">
+            <button type="button" aria-label="Close" onclick="closeConfirmModal()"
+                    style="position:absolute; top:10px; right:10px; width:48px; height:48px; border:none; border-radius:12px; background:transparent; color:#F6F7F5; font-size:32px; line-height:1; cursor:pointer;">&times;</button>
+            <p style="margin:0; font-size:24px; font-weight:700; color:#ffffff;">
+                {{ $isBorrow ? 'Ready to borrow' : 'Ready to return' }} {{ count($items) }} {{ \Illuminate\Support\Str::plural('book', count($items)) }}?
+            </p>
+            <p style="margin:12px 0 0; font-size:16px; color:rgba(246,247,245,0.85);">
+                Confirm to complete the transaction, or Cancel to make changes
+            </p>
+            <div style="margin-top:28px; display:flex; gap:12px;">
+                <button type="button" onclick="closeConfirmModal()" class="kiosk-btn"
+                        style="flex:1; border:1px solid rgba(246,247,245,0.35); color:#F6F7F5; background:transparent; padding:14px 22px; font-size:16px;">Cancel</button>
+                <button type="button" onclick="submitConfirm()" class="kiosk-btn"
+                        style="flex:1; background:#E4A72E; color:#16233E; padding:14px 22px; font-size:16px; font-weight:700;">Confirm</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        function closeConfirmModal() { document.getElementById('confirmModal').style.display = 'none'; }
+        function submitConfirm() {
+            closeConfirmModal();
+            document.getElementById('confirmForm').requestSubmit();
+        }
+    </script>
 
     <div id="processing" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(10,18,36,0.92); align-items:center; justify-content:center; text-align:center; color:#F6F7F5;">
         <div>
