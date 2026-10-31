@@ -71,22 +71,10 @@
         @if ($canAdd)
         <form method="POST" action="{{ route("kiosk.$mode.lookup") }}" style="margin-top:20px;">
             @csrf
-            <div id="scan-field" style="{{ $showField ? '' : 'display:none;' }}">
+                        <div id="scan-field">
                 <x-kiosk-input name="barcode" id="barcode" placeholder="Scan the book tag or type its barcode" autofocus required />
             </div>
-            @unless ($showField)
-                <button type="button" id="scan-another" class="kiosk-btn"
-                        style="width:100%; background:#E4A72E; color:#16233E; padding:16px 24px; font-size:18px; font-weight:700;">
-                    {{ $isBorrow ? 'Borrow another book' : 'Return another book' }}
-                </button>
-                <script>
-                    document.getElementById('scan-another').addEventListener('click', function () {
-                        this.style.display = 'none';
-                        document.getElementById('scan-field').style.display = '';
-                        document.getElementById('barcode').focus();
-                    });
-                </script>
-                        @endunless
+            
         </form>
         @endif
         <p class="mt-8 text-xs font-semibold uppercase tracking-wide text-paper/50">
@@ -125,10 +113,11 @@
         </div>
 
                 @if (count($items) > 0)
-            @if (! $verified)
+                        @if (! $isBorrow)
+                {{-- No identity photo is needed for returns --}}
+            @elseif (! $verified)
                 @include('kiosk.partials.verification-capture', ['action' => $mode, 'confirmFormId' => 'confirmForm'])
-            @else
-                <div class="rounded-xl bg-catalog-teal/15 border border-catalog-teal/30 px-4 py-3 text-sm text-catalog-teal font-medium mt-4">
+            @else                <div class="rounded-xl bg-catalog-teal/15 border border-catalog-teal/30 px-4 py-3 text-sm text-catalog-teal font-medium mt-4">
                     ✓ Identity verification photo captured for this visit.
                 </div>
             @endif
@@ -138,8 +127,8 @@
                       onsubmit="this.querySelector('button').disabled = true; document.getElementById('processing').style.display = 'flex';">
                     @csrf
                     <input type="hidden" name="cart_token" value="{{ $token }}">
-                                       <button type="button" id="confirmSubmitBtn" class="kiosk-btn" onclick="document.getElementById('confirmModal').style.display = 'flex';" @unless($verified) disabled @endunless
-                            style="width:100%; background:#E4A72E; color:#16233E; padding:14px 24px; font-size:16px; opacity:{{ $verified ? '1' : '0.5' }};">
+                                       <button type="button" id="confirmSubmitBtn" class="kiosk-btn" onclick="document.getElementById('confirmModal').style.display = 'flex';" @unless($verified || ! $isBorrow) disabled @endunless
+                            style="width:100%; background:#E4A72E; color:#16233E; padding:14px 24px; font-size:16px; opacity:{{ ($verified || ! $isBorrow) ? '1' : '0.5' }};">
                         {{ $t['confirm'] }} ({{ count($items) }})
                     </button>
                 </form>

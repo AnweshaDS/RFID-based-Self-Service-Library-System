@@ -126,7 +126,7 @@ class KioskCartController extends Controller
             ->where('action', $mode)
             ->exists();
 
-        if (! $verified) {
+                if ($mode === 'borrow' && ! $verified) {
             return $this->reject($mode, 'Please complete the identity verification photo before confirming.');
         }
         $lock = Cache::lock("kiosk-confirm-{$patronId}", 180);

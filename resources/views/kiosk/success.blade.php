@@ -62,10 +62,10 @@
                style="display:block; border:1px solid rgba(246,247,245,0.3); color:#F6F7F5; border-radius:12px; padding:14px 24px; font-size:15px; font-weight:600; text-decoration:none;">
                 View Receipt
             </a>
-            <a href="{{ route('kiosk.dashboard') }}"
-               style="display:block; border:1px solid rgba(246,247,245,0.3); color:#F6F7F5; border-radius:12px; padding:14px 24px; font-size:15px; font-weight:600; text-decoration:none;">
+                        <button type="button" onclick="document.getElementById('idle-logout-form').submit();"
+                    style="display:block; width:100%; background:transparent; border:1px solid rgba(246,247,245,0.3); color:#F6F7F5; border-radius:12px; padding:14px 24px; font-size:15px; font-weight:600; cursor:pointer;">
                 Exit Without Receipt
-            </a>
+            </button>
         </div>
     </div>
     <p style="margin-top:16px; text-align:center; font-size:12px; color:rgba(246,247,245,0.5);">
