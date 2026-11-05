@@ -59,7 +59,7 @@ class KohaSipClient
         // Bound this specific read to whatever's left of the total budget
         stream_set_timeout($this->socket, (int) ceil($remaining));
 
-        fwrite($this->socket, $message . "\r");
+            fwrite($this->socket, $message . "\r\n");
 
         do {
             if ($this->remaining() <= 0) {
