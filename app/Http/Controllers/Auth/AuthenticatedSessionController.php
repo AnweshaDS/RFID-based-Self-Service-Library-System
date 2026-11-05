@@ -48,4 +48,20 @@ class AuthenticatedSessionController extends Controller
 
         return redirect()->route('login');
     }
+
+        public function destroyWithKoha(Request $request): RedirectResponse
+    {
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        $kohaStaffUrl = rtrim((string) config('services.koha.staff_url'), '/');
+
+        if ($kohaStaffUrl !== '') {
+            return redirect()->away($kohaStaffUrl . '/cgi-bin/koha/mainpage.pl?logout.x=1');
+        }
+
+        return redirect()->route('login');
+    }
 }

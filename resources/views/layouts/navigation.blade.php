@@ -66,6 +66,17 @@
                                 {{ __('Log Out') }}
                             </x-dropdown-link>
                         </form>
+
+                        <!-- Log out of Laravel and Koha -->
+                        <form method="POST" action="{{ route('logout.koha') }}">
+                            @csrf
+
+                            <x-dropdown-link :href="route('logout.koha')"
+                                    onclick="event.preventDefault();
+                                                this.closest('form').submit();">
+                                {{ __('Log Out of Laravel and Koha') }}
+                            </x-dropdown-link>
+                        </form>
                     </x-slot>
                 </x-dropdown>
             </div>
@@ -122,6 +133,17 @@
                             onclick="event.preventDefault();
                                         this.closest('form').submit();">
                         {{ __('Log Out') }}
+                    </x-responsive-nav-link>
+                </form>
+
+                <!-- Log out of Laravel and Koha -->
+                <form method="POST" action="{{ route('logout.koha') }}">
+                    @csrf
+
+                    <x-responsive-nav-link :href="route('logout.koha')"
+                            onclick="event.preventDefault();
+                                        this.closest('form').submit();">
+                        {{ __('Log Out of Laravel and Koha') }}
                     </x-responsive-nav-link>
                 </form>
             </div>

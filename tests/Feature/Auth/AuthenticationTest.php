@@ -100,4 +100,16 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
         $response->assertRedirect(route('login'));
     }
+
+        public function test_users_can_logout_of_koha_too(): void
+    {
+        config(['services.koha.staff_url' => 'http://koha.test:8081']);
+
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->post('/logout/koha');
+
+        $this->assertGuest();
+        $response->assertRedirect('http://koha.test:8081/cgi-bin/koha/mainpage.pl?logout.x=1');
+    }
 }
