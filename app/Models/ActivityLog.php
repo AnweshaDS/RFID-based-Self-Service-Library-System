@@ -21,7 +21,9 @@ class ActivityLog extends Model
         'message',
         'barcode',
         'item_id',
+        'kiosk_id',
         'metadata',
+    ];
     ];
 
     /**

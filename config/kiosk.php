@@ -26,8 +26,9 @@ return [
     // Photos that still need review, or were flagged, are kept this many days instead
     'flagged_retention_days' => (int) env('KIOSK_FLAGGED_RETENTION_DAYS', 365),
 
-    // Kiosk photos shown on a patron card before "Show all"
+        // Kiosk photos shown on a patron card before "Show all"
     'photos_per_card' => 10,
+
 
     // Face matching: the Python tool in the face-service folder
     'face_python' => env('FACE_PYTHON', base_path('face-service/.venv/Scripts/python.exe')),
@@ -36,4 +37,9 @@ return [
     // Cosine similarity at or above this counts as the same person. 0.363 is OpenCV's
     // own starting value for this model; calibrate it on real photos from this library.
     'face_match_threshold' => (float) env('FACE_MATCH_THRESHOLD', 0.363),
+
+    // Which laptop/kiosk this is. Set per machine in .env, never committed.
+    'id' => env('KIOSK_ID', 'unknown'),
+    'name' => env('KIOSK_NAME', env('KIOSK_ID', 'Unknown kiosk')),
+
 ];

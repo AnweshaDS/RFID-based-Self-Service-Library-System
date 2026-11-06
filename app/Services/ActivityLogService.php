@@ -34,6 +34,7 @@ class ActivityLogService
             'message' => $message,
             'barcode' => $barcode,
             'item_id' => $itemId,
+            'kiosk_id' => config('kiosk.id'),
             'metadata' => $metadata,
         ]);
     }
