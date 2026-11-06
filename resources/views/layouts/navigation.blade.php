@@ -1,3 +1,9 @@
+@php
+    $navUser = Auth::user();
+    $canReviewPhotos = $navUser && \App\Support\VerificationPhotos::userCanReview($navUser);
+    $pendingWarnings = $canReviewPhotos ? \App\Support\VerificationPhotos::pendingWarningCount() : 0;
+    $navBadgeStyle = 'margin-left:6px; display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; padding:0 6px; border-radius:999px; background:#dc2626; color:#fff; font-size:11px; font-weight:700;';
+@endphp
 <nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -15,6 +21,15 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+
+                    @if ($canReviewPhotos)
+                        <x-nav-link :href="route('patron-verification.history')" :active="request()->routeIs('patron-verification.*')">
+                            {{ __('Verification') }}
+                            @if ($pendingWarnings > 0)
+                                <span style="{{ $navBadgeStyle }}" title="Photos that need review">{{ $pendingWarnings }}</span>
+                            @endif
+                        </x-nav-link>
+                    @endif
 
                     @if (Auth::user() && (Auth::user()->hasRole('Admin') || Auth::user()->hasRole('Librarian')))
                         <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.*')">
@@ -99,6 +114,15 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+
+            @if ($canReviewPhotos)
+                <x-responsive-nav-link :href="route('patron-verification.history')" :active="request()->routeIs('patron-verification.*')">
+                    {{ __('Verification') }}
+                    @if ($pendingWarnings > 0)
+                        <span style="{{ $navBadgeStyle }}" title="Photos that need review">{{ $pendingWarnings }}</span>
+                    @endif
+                </x-responsive-nav-link>
+            @endif
 
             @if (Auth::user() && (Auth::user()->hasRole('Admin') || Auth::user()->hasRole('Librarian')))
                 <x-responsive-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.*')">

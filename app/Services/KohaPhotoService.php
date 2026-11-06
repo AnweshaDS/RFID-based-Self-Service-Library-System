@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -23,7 +23,7 @@ class KohaPhotoService
     {
     }
 
-    private function disk(): Filesystem
+    private function disk(): FilesystemAdapter
     {
         return Storage::disk(config('kiosk.photo_disk'));
     }
@@ -38,14 +38,30 @@ class KohaPhotoService
         return "koha-photos/{$patronId}.none";
     }
 
-    /**
-     * The patron's Koha photo as JPEG bytes, from the saved copy when it is recent.
-     * Returns null when Koha has no photo for the patron, or cannot be reached.
-     */
+    /** The patron's Koha photo as JPEG bytes, or null when there is none or Koha cannot be reached. */
     public function get(int $patronId, bool $forceRefresh = false): ?string
     {
+        return $this->lookup($patronId, $forceRefresh)['bytes'];
+    }
+
+    /** Full path of the saved copy on this computer, or null when there is none. */
+    public function localPath(int $patronId): ?string
+    {
+        $path = $this->photoPath($patronId);
+
+        return $this->disk()->exists($path) ? $this->disk()->path($path) : null;
+    }
+
+    /**
+     * state is "ready" (bytes included), "none" (Koha has no photo for this patron),
+     * or "unavailable" (Koha could not answer; try again later).
+     *
+     * @return array{state: string, bytes: ?string}
+     */
+    public function lookup(int $patronId, bool $forceRefresh = false): array
+    {
         if ($patronId <= 0) {
-            return null;
+            return ['state' => 'none', 'bytes' => null];
         }
 
         $disk = $this->disk();
@@ -55,16 +71,15 @@ class KohaPhotoService
         if (! $forceRefresh) {
             if ($disk->exists($path)
                 && $disk->lastModified($path) > now()->subDays(self::REFRESH_DAYS)->getTimestamp()) {
-                return $disk->get($path);
+                return ['state' => 'ready', 'bytes' => $disk->get($path)];
             }
 
             if ($disk->exists($missing)
                 && $disk->lastModified($missing) > now()->subHours(self::RETRY_MISSING_HOURS)->getTimestamp()) {
-                return null;
+                return ['state' => 'none', 'bytes' => null];
             }
         }
 
-        // The first download of a large photo over a slow link can take a while.
         @set_time_limit(300);
 
         try {
@@ -72,16 +87,14 @@ class KohaPhotoService
         } catch (\Throwable $e) {
             Log::warning("Koha photo download failed for patron {$patronId}: " . $e->getMessage());
 
-            // Koha could not be reached: use the older copy if there is one,
-            // and do not mark the patron as having no photo.
-            return $disk->exists($path) ? $disk->get($path) : null;
+            return $this->fallback($disk, $path);
         }
 
         if ($original === null || $original === '') {
             $disk->delete($path);
             $disk->put($missing, (string) time());
 
-            return null;
+            return ['state' => 'none', 'bytes' => null];
         }
 
         $jpeg = $this->shrink($original);
@@ -89,13 +102,21 @@ class KohaPhotoService
         if ($jpeg === null) {
             Log::warning("Koha photo for patron {$patronId} could not be read as an image.");
 
-            return $disk->exists($path) ? $disk->get($path) : null;
+            return $this->fallback($disk, $path);
         }
 
         $disk->put($path, $jpeg);
         $disk->delete($missing);
 
-        return $jpeg;
+        return ['state' => 'ready', 'bytes' => $jpeg];
+    }
+
+    /** Koha did not give a usable photo: use the older saved copy if there is one. */
+    private function fallback(FilesystemAdapter $disk, string $path): array
+    {
+        return $disk->exists($path)
+            ? ['state' => 'ready', 'bytes' => $disk->get($path)]
+            : ['state' => 'unavailable', 'bytes' => null];
     }
 
     private function shrink(string $bytes): ?string

@@ -45,12 +45,16 @@ class CacheKohaPhotos extends Command
 
         foreach ($ids as $id) {
             $start = microtime(true);
-            $bytes = $photos->get($id, (bool) $this->option('refresh'));
+            $lookup = $photos->lookup($id, (bool) $this->option('refresh'));
             $seconds = round(microtime(true) - $start, 1);
 
-            $this->line($bytes === null
-                ? "patron {$id}: no photo in Koha, or Koha could not be reached [{$seconds}s]"
-                : "patron {$id}: ready, " . number_format(strlen($bytes) / 1024, 0) . " KB [{$seconds}s]");
+            $text = match ($lookup['state']) {
+                'ready' => 'ready, ' . number_format(strlen((string) $lookup['bytes']) / 1024, 0) . ' KB',
+                'none' => 'Koha has no photo for this patron',
+                default => 'Koha could not be reached or answered with an error (see storage/logs/laravel.log)',
+            };
+
+            $this->line("patron {$id}: {$text} [{$seconds}s]");
         }
 
         return self::SUCCESS;

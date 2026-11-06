@@ -15,3 +15,9 @@ Schedule::command('verification:prune', [
     '--older-than' => max(7, (int) config('kiosk.photo_retention_days', 90)),
     '--force' => true,
 ])->dailyAt('02:00')->withoutOverlapping();
+
+// Compare new kiosk photos with the patron's Koha photo. Only photos whose file is on
+// this computer are checked.
+Schedule::command('verification:match', ['--limit' => 10])
+    ->everyMinute()
+    ->withoutOverlapping();

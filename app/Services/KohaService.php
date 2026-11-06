@@ -387,23 +387,31 @@ class KohaService
         return $response->successful();
     }
 
-    /**
-     * Fetch a patron's stored image, or null if none exists.
+        /**
+     * Fetch a patron's stored image, or null when Koha has no image for the patron.
+     * Throws when Koha could not answer properly, so callers can retry later.
      *
      * @throws Exception
      */
     public function getPatronImage(int $patronId): ?string
     {
         $token = $this->getAccessToken();
-        $response = Http::withToken($token)->timeout(240)->get("{$this->baseUrl}/api/v1/patrons/{$patronId}/image");
+        $response = Http::withToken($token)
+            ->acceptJson()
+            ->timeout(60)
+            ->get("{$this->baseUrl}/api/v1/patrons/{$patronId}/default_image");
+
+        if ($response->notFound()) {
+            return null;
+        }
 
         if (! $response->successful()) {
-            return null;
+            throw new Exception('Koha patron image request failed. HTTP ' . $response->status());
         }
 
         return $response->body();
     }
-
+    
     /**
      * Check in / return an item.
      *

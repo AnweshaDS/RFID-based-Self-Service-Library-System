@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\PatronVerificationCapture;
+use App\Support\VerificationPhotos;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 
@@ -12,6 +13,7 @@ class PruneVerificationPhotos extends Command
         {--card= : Only photos for this card number}
         {--older-than= : Only photos older than this many days}
         {--include-missing : Also delete records whose photo file is not on this computer}
+        {--include-protected : Also delete photos that still need review or were flagged}
         {--force : Really delete. Without this the command only shows what it would delete}';
 
     protected $description = 'Delete kiosk verification photos (the image file and its database record)';
@@ -33,6 +35,9 @@ class PruneVerificationPhotos extends Command
             $query->where('cardnumber', $card);
         }
 
+        $kept = 0;
+        $longLimit = null;
+
         if (filled($days)) {
             if (! ctype_digit((string) $days)) {
                 $this->error('--older-than must be a whole number of days.');
@@ -41,6 +46,20 @@ class PruneVerificationPhotos extends Command
             }
 
             $query->where('created_at', '<', now()->subDays((int) $days));
+
+            // Photos that still need a staff decision, or were flagged, are kept longer.
+            if (! $this->option('include-protected')) {
+                $longLimit = max((int) $days, (int) config('kiosk.flagged_retention_days', 365));
+                $oldEnough = now()->subDays($longLimit);
+
+                $kept = VerificationPhotos::awaitingOrFlagged(clone $query)
+                    ->where('created_at', '>=', $oldEnough)
+                    ->count();
+
+                $query->where(function ($q) use ($oldEnough) {
+                    VerificationPhotos::deletable($q)->orWhere('created_at', '<', $oldEnough);
+                });
+            }
         }
 
         $captures = $query->orderBy('id')->get();
@@ -84,6 +103,10 @@ class PruneVerificationPhotos extends Command
         $this->newLine();
         $this->info('Matched ' . $captures->count() . ' record(s).');
         $this->info(($force ? 'Deleted ' : 'Would delete ') . $handled . ' record(s) and their photo files.');
+
+        if ($kept > 0) {
+            $this->info("Kept {$kept} photo(s) that still need review or were flagged (they are kept up to {$longLimit} days).");
+        }
 
         if ($skipped > 0) {
             $this->warn($skipped . ' record(s) skipped because their photo file is not on this computer. Run the command on the computer that has the files, or add --include-missing to delete just the records.');
