@@ -1,5 +1,9 @@
-@php $idleTimeout = (int) config('kiosk.idle_timeout', 180); @endphp
+@php $idleTimeout = (int) config('kiosk.idle_timeout', 180); $currentCard = strtolower((string) data_get(session('kiosk_patron'), 'cardnumber', '')); @endphp
 
+<form id="card-switch-form" method="POST" action="{{ route('kiosk.enter') }}" style="display:none;">
+    @csrf
+    <input type="hidden" name="cardnumber" id="card-switch-input" value="">
+</form>
 <form id="idle-logout-form" method="POST" action="{{ route('kiosk.logout') }}" style="display:none;">@csrf</form>
 @unless ($hideLogout ?? false)
 <form method="POST" action="{{ route('kiosk.logout') }}" style="position:fixed; top:16px; right:16px; z-index:9999;">
@@ -15,6 +19,22 @@
     let lastActivity = Date.now();
     let lastPing = Date.now();
     let loggingOut = false;
+
+    // Called by the scan pollers when a patron card is tapped during a session
+    const CURRENT_CARD = @json($currentCard);
+    let switching = false;
+    window.kioskSwitchTo = function (cardnumber) {
+        cardnumber = String(cardnumber || '').trim();
+        if (cardnumber === '' || switching || loggingOut) return;
+        // Same patron tapped again: do nothing
+        if (cardnumber.toLowerCase() === CURRENT_CARD) return;
+        // A borrow or return is being processed: ignore the tap
+        const overlay = document.getElementById('processing');
+        if (overlay && getComputedStyle(overlay).display !== 'none') return;
+        switching = true;
+        document.getElementById('card-switch-input').value = cardnumber;
+        document.getElementById('card-switch-form').submit();
+    };
 
     function onActivity() {
         lastActivity = Date.now();

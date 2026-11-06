@@ -33,7 +33,7 @@
         if (submitting) return;
         // Only accept scans while the scan field is showing (after "Borrow/Return another book")
         const field = document.getElementById('scan-field');
-        if (field && field.style.display === 'none') return;
+        const fieldHidden = !!field && field.style.display === 'none';
         try {
             const res = await fetch('/api/kiosk/poll?type=book', { headers: { 'Accept': 'application/json' } });
             if (!res.ok) return;
@@ -41,7 +41,16 @@
             const data = await res.json();
             if (!data) return;
 
-            if (data.error) { showError(data.error); return; }
+             // Another patron tapped their card: switch to that patron
+            if (data.switch) {
+                if (window.kioskSwitchTo) window.kioskSwitchTo(data.cardnumber);
+                return;
+            }
+
+            // Scan field hidden: ignore everything except a card switch
+            if (fieldHidden) return;           
+
+if (data.error) { showError(data.error); return; }
 
             // Only act on a real barcode
             if (typeof data.barcode !== 'string' || data.barcode.trim() === '') return;

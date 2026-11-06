@@ -19,7 +19,11 @@
             const res = await fetch('/api/kiosk/poll?type=none', { headers: { 'Accept': 'application/json' } });
             if (!res.ok) return;
             const data = await res.json();
-            if (data && data.error) show(data.error);
+                        if (data && data.switch) {
+                if (window.kioskSwitchTo) window.kioskSwitchTo(data.cardnumber);
+                return;
+            }
+if (data && data.error) show(data.error);
         } catch (e) {}
     }, 1000);
 })();

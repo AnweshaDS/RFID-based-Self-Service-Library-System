@@ -88,7 +88,16 @@ class KioskController extends Controller
         return response()->json($scan);
     }
 
-    if ($wanted === 'none') {
+    
+    // A patron card tapped while someone is logged in: tell the page to switch to that patron
+    if (($scan['type'] ?? '') === 'patron' && in_array($wanted, ['book', 'none'], true)) {
+        return response()->json([
+            'id' => $scan['id'],
+            'switch' => true,
+            'cardnumber' => $scan['cardnumber'],
+        ]);
+    }
+if ($wanted === 'none') {
         return response()->json([
             'id' => $scan['id'],
             'error' => ($scan['type'] ?? '') === 'patron'
@@ -180,10 +189,20 @@ public function showReceiptView()
         'recent_activity' => [],
     ];
 
+    
+    // Another patron tapped while a session was open: close the old session completely
+    $previous = Session::get('kiosk_patron');
+    $previousId = (string) ($previous['patron_id'] ?? '');
+    $isSwitch = $previous && $previousId !== '' && $previousId !== $patronIdStr;
+
+    if ($isSwitch) {
+        Session::flush();
+    }
     Session::regenerate();
     Cache::forget('kiosk.pending_scan');
     Session::put('kiosk_patron', $patron);
     Session::put('kiosk_last_activity', now());
+
 
     $this->activityLogService->log(
         action: $loginAction,
@@ -191,6 +210,15 @@ public function showReceiptView()
         patronId: $patronIdStr,
         message: "Patron {$name} entered successfully."
     );
+
+    if ($isSwitch) {
+        $this->activityLogService->log(
+            action: 'session_switched',
+            status: 'success',
+            patronId: $previousId,
+            message: 'Session closed: another card was tapped.'
+        );
+    }
 
     return redirect()->route('kiosk.dashboard');
 }
