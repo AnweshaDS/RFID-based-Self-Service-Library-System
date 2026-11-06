@@ -250,7 +250,7 @@ public function showReceiptView()
 
             if ($due->copy()->endOfDay()->isPast()) {
                 $overdueCount++;
-            } elseif ($due->lte(now()->addDays(3))) {
+            } elseif ($due->copy()->startOfDay()->lte(now()->addDays(3)->startOfDay())) {
                 $dueSoonCount++;
             }
         }

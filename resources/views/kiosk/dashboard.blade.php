@@ -66,7 +66,7 @@
                 @php
                     $due = !empty($book['due']) ? \Illuminate\Support\Carbon::parse($book['due']) : null;
                     $isOverdue = $due && $due->copy()->endOfDay()->isPast();
-                    $isDueSoon = $due && ! $isOverdue && $due->lte(now()->addDays(3));
+                    $isDueSoon = $due && ! $isOverdue && $due->copy()->startOfDay()->lte(now()->addDays(3)->startOfDay());
                 @endphp
                 <div class="kiosk-row">
                     <div class="kiosk-row-main">
