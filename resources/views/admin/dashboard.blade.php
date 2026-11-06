@@ -57,6 +57,7 @@
                                 <th class="py-2 pr-4">Message</th>
                                 <th class="py-2 pr-4">Patron ID</th>
                                 <th class="py-2 pr-4">Barcode</th>
+                                <th class="py-2 pr-4">Kiosk</th>
                                 <th class="py-2 pr-4">Time</th>
                             </tr>
                         </thead>
@@ -72,11 +73,12 @@
                                     <td class="py-2 pr-4 text-gray-600">{{ $activity->message }}</td>
                                     <td class="py-2 pr-4">{{ $activity->patron_id ?? '-' }}</td>
                                     <td class="py-2 pr-4 font-mono">{{ $activity->barcode ?? '-' }}</td>
+                                    <td class="py-2 pr-4">{{ $activity->kiosk_id ?? 'Before tracking' }}</td>
                                     <td class="py-2 pr-4 text-gray-500">{{ $activity->created_at->timezone('Asia/Dhaka')->format('d M Y, H:i') }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="py-4 text-center text-gray-500">No activity recorded yet.</td>
+                                    <td colspan="7" class="py-4 text-center text-gray-500">No activity recorded yet.</td>
                                 </tr>
                             @endforelse
                         </tbody>
