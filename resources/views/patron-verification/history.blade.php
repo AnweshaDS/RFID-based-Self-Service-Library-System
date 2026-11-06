@@ -73,7 +73,7 @@
                                             <div class="vh-missing">Photo file is not on this computer</div>
                                         </div>
                                         <p class="vh-cap text-gray-500 capitalize">{{ $capture->action }}@if ($capture->barcode) - {{ $capture->barcode }}@endif</p>
-                                        <p class="vh-cap text-gray-400">{{ $capture->created_at->format('d M Y, H:i') }}</p>
+                                        <p class="vh-cap text-gray-400">{{ $capture->created_at->timezone('Asia/Dhaka')->format('d M Y, H:i') }}</p>
                                         @unless ($capture->face_detected)
                                             <p class="vh-cap text-red-600 font-medium">No face detected</p>
                                         @endunless

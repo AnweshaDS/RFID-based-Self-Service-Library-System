@@ -117,7 +117,7 @@
 
         <div class="row">
             <span class="label">Date &amp; Time</span>
-            <span class="value">{{ \Illuminate\Support\Carbon::parse($receipt['timestamp'])->format('d M Y, h:i A') }}</span>
+            <span class="value">{{ \Illuminate\Support\Carbon::parse($receipt['timestamp'])->timezone('Asia/Dhaka')->format('d M Y, h:i A') }}</span>
         </div>
         <div class="row">
             <span class="label">Patron</span>

@@ -137,7 +137,7 @@
                         </div>
                         <div class="kiosk-row-side">
                             <span class="kiosk-chip {{ $chip }}">&#10003; {{ $done }}</span>
-                            <span class="kiosk-row-meta" style="margin-top:0;">{{ $activity->created_at ? $activity->created_at->format('d M, h:i A') : '' }}</span>
+                            <span class="kiosk-row-meta" style="margin-top:0;">{{ $activity->created_at ? $activity->created_at->timezone('Asia/Dhaka')->format('d M, h:i A') : '' }}</span>
                         </div>
                     </div>
                 @endforeach

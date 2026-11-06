@@ -72,7 +72,7 @@
                                     <td class="py-2 pr-4 text-gray-600">{{ $activity->message }}</td>
                                     <td class="py-2 pr-4">{{ $activity->patron_id ?? '-' }}</td>
                                     <td class="py-2 pr-4 font-mono">{{ $activity->barcode ?? '-' }}</td>
-                                    <td class="py-2 pr-4 text-gray-500">{{ $activity->created_at->format('d M Y, H:i') }}</td>
+                                    <td class="py-2 pr-4 text-gray-500">{{ $activity->created_at->timezone('Asia/Dhaka')->format('d M Y, H:i') }}</td>
                                 </tr>
                             @empty
                                 <tr>
@@ -92,7 +92,7 @@
                     @forelse ($recentBorrows as $borrow)
                         <div class="flex items-center justify-between rounded-md bg-gray-50 px-4 py-2.5 text-sm">
                             <span>{{ $borrow->message ?? 'Book borrowed' }}</span>
-                            <span class="text-gray-500">{{ $borrow->created_at->format('d M Y, H:i') }}</span>
+                            <span class="text-gray-500">{{ $borrow->created_at->timezone('Asia/Dhaka')->format('d M Y, H:i') }}</span>
                         </div>
                     @empty
                         <p class="text-sm text-gray-500">No borrow activity recorded yet.</p>

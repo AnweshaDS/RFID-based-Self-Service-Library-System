@@ -26,7 +26,7 @@
     <div class="divider"></div>
 
     <table class="row">
-        <tr><td>Date/Time</td><td class="value">{{ \Illuminate\Support\Carbon::parse($receipt['timestamp'])->format('d M y h:i A') }}</td></tr>
+        <tr><td>Date/Time</td><td class="value">{{ \Illuminate\Support\Carbon::parse($receipt['timestamp'])->timezone('Asia/Dhaka')->format('d M y h:i A') }}</td></tr>
         <tr><td>Patron</td><td class="value">{{ $receipt['patron_name'] }}</td></tr>
         <tr><td>Patron ID</td><td class="value">{{ $receipt['patron_id'] }}</td></tr>
     </table>
