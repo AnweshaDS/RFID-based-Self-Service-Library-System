@@ -44,7 +44,7 @@ class PruneVerificationPhotos extends Command
         }
 
         $captures = $query->orderBy('id')->get();
-        $disk = Storage::disk('local');
+        $disk = Storage::disk(config('kiosk.photo_disk'));
         $force = (bool) $this->option('force');
         $includeMissing = (bool) $this->option('include-missing');
 

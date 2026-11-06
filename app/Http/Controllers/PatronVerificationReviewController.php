@@ -10,11 +10,14 @@ use Illuminate\View\View;
 
 class PatronVerificationReviewController extends Controller
 {
-    /** How many kiosk photos each patron card shows before "Show all". */
-    protected const PHOTOS_PER_CARD = 12;
-
     /** How many patron cards appear on one page. */
     protected const CARDS_PER_PAGE = 8;
+
+    /** Kiosk photos each patron card shows before "Show all" (set in config/kiosk.php). */
+    protected function photosPerCard(): int
+    {
+        return max(1, (int) config('kiosk.photos_per_card', 10));
+    }
 
     protected function ensureAccess(Request $request): void
     {
@@ -31,6 +34,7 @@ class PatronVerificationReviewController extends Controller
     {
         $this->ensureAccess($request);
 
+        $photosPerCard = $this->photosPerCard();
         $expandedPatron = (string) $request->input('show_all', '');
 
         // The action and date filters limit which photos are counted and shown.
@@ -57,7 +61,7 @@ class PatronVerificationReviewController extends Controller
 
         $patrons = $patronQuery->paginate(self::CARDS_PER_PAGE)->withQueryString();
 
-        $patrons->through(function ($row) use ($applyPhotoFilters, $expandedPatron) {
+        $patrons->through(function ($row) use ($applyPhotoFilters, $expandedPatron, $photosPerCard) {
             $patronId = (string) $row->patron_id;
             $expanded = $expandedPatron !== '' && $expandedPatron === $patronId;
 
@@ -69,7 +73,7 @@ class PatronVerificationReviewController extends Controller
             $photoQuery->latest()->orderByDesc('id');
 
             if (! $expanded) {
-                $photoQuery->limit(self::PHOTOS_PER_CARD);
+                $photoQuery->limit($photosPerCard);
             }
 
             $captures = $photoQuery->get();
@@ -88,7 +92,7 @@ class PatronVerificationReviewController extends Controller
 
         return view('patron-verification.history', [
             'patrons' => $patrons,
-            'photosPerCard' => self::PHOTOS_PER_CARD,
+            'photosPerCard' => $photosPerCard,
         ]);
     }
 
@@ -96,15 +100,17 @@ class PatronVerificationReviewController extends Controller
     {
         $this->ensureAccess($request);
 
-        if (blank($capture->photo_path)) {
+        $disk = Storage::disk(config('kiosk.photo_disk'));
+
+        if (blank($capture->photo_path) || ! $disk->exists($capture->photo_path)) {
             abort(404);
         }
 
-        if (! Storage::disk('local')->exists($capture->photo_path)) {
-            abort(404);
-        }
+        $bytes = $disk->get($capture->photo_path);
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($bytes);
 
-        return response(Storage::disk('local')->get($capture->photo_path))
-            ->header('Content-Type', 'image/jpeg');
+        return response($bytes)
+            ->header('Content-Type', is_string($mime) && str_starts_with($mime, 'image/') ? $mime : 'image/jpeg')
+            ->header('Cache-Control', 'private, max-age=86400');
     }
 }

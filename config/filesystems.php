@@ -47,6 +47,17 @@ return [
             'report' => false,
         ],
 
+        // Kiosk verification photos and cached Koha photos. Set
+        // VERIFICATION_STORAGE_PATH in .env to point several computers (or a
+        // server later) at one shared folder. When it is not set, this behaves
+        // exactly like the "local" disk.
+        'verification' => [
+            'driver' => 'local',
+            'root' => env('VERIFICATION_STORAGE_PATH', storage_path('app/private')),
+            'throw' => false,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

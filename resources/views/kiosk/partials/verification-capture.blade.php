@@ -28,6 +28,7 @@
 
         let modelReady = false;
         let captured = false;
+        let detecting = false;
         let pollTimer = null;
         let elapsedMs = 0;
 
@@ -54,22 +55,27 @@
 
         function startPolling() {
             pollTimer = setInterval(async () => {
-                if (captured || !modelReady || video.readyState < 2) return;
+                // Skip this tick while an earlier detection is still running
+                if (captured || detecting || !modelReady || video.readyState < 2) return;
 
                 elapsedMs += 800;
                 if (elapsedMs > 15000) {
                     status.textContent = 'Still waiting - please center your face in the oval.';
                 }
 
+                detecting = true;
                 try {
                     const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
-                    if (detection) {
+                    // Check again after the wait: another tick may have captured already
+                    if (detection && !captured) {
                         captured = true;
                         clearInterval(pollTimer);
                         await captureAndSave(true);
                     }
                 } catch (e) {
                     // ignore a single failed detection tick, keep polling
+                } finally {
+                    detecting = false;
                 }
             }, 800);
         }

@@ -3,14 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\PatronVerificationCapture;
+use App\Services\KohaPhotoService;
 use App\Services\KohaService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class PatronVerificationController extends Controller
 {
-    public function __construct(protected KohaService $kohaService)
-    {
+    public function __construct(
+        protected KohaService $kohaService,
+        protected KohaPhotoService $kohaPhotos,
+    ) {
     }
 
     protected function ensureAccess(Request $request): void
@@ -44,7 +47,7 @@ class PatronVerificationController extends Controller
 
         if ($patron) {
             try {
-                $photoAvailable = $this->kohaService->checkPatronImageExists((int) $patron['patron_id']);
+                $photoAvailable = $this->kohaPhotos->get((int) $patron['patron_id']) !== null;
             } catch (\Throwable $e) {
                 $photoAvailable = false;
             }
@@ -65,12 +68,14 @@ class PatronVerificationController extends Controller
     {
         $this->ensureAccess($request);
 
-        $image = $this->kohaService->getPatronImage($patronId);
+        $image = $this->kohaPhotos->get($patronId);
 
-        if (! $image) {
+        if ($image === null) {
             abort(404);
         }
 
-        return response($image)->header('Content-Type', 'image/jpeg');
+        return response($image)
+            ->header('Content-Type', 'image/jpeg')
+            ->header('Cache-Control', 'private, max-age=3600');
     }
 }
