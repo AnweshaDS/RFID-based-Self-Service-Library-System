@@ -23,7 +23,7 @@ class ActivityLog extends Model
         'item_id',
         'kiosk_id',
         'metadata',
-    ];
+    
     ];
 
     /**
