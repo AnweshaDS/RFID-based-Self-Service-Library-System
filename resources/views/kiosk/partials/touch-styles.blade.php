@@ -33,7 +33,12 @@
         text-decoration: none !important; touch-action: manipulation;
     }
         .kiosk-page-header { margin-bottom: 22px; padding-bottom: 20px; border-bottom: 1px solid rgba(246, 247, 245, 0.18); text-align: center; }
-    .kiosk-page-header .kiosk-back-btn { display: flex; width: fit-content; margin: 0 auto 20px 0; }
+        .kiosk-page-header .kiosk-back-btn {
+        position: fixed; top: 16px; left: 16px; z-index: 9999; margin: 0;
+        background: rgba(10,18,36,0.85); color: #F6F7F5 !important;
+        border: 1px solid rgba(246,247,245,0.3); border-radius: 10px;
+        padding: 12px 22px; font-size: 16px; font-weight: 600;
+    }
     .kiosk-page-title { margin: 0; font-size: 32px; line-height: 1.2; font-weight: 700; color: #ffffff; text-align: center; }
     .kiosk-page-subtitle { margin: 10px auto 0; max-width: 560px; font-size: 16px; line-height: 1.5; color: rgba(246, 247, 245, 0.85); text-align: center; }
 
