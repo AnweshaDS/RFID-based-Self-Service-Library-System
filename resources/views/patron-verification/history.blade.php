@@ -35,10 +35,11 @@
             'info' => '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
             'check' => '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
             'flag' => '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>',
-            'clock' => '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+            'clock' => '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
         ];
         $iconFor = ['danger' => 'triangle', 'warn' => 'triangle', 'info' => 'info', 'ok' => 'check', 'flagged' => 'flag', 'pending' => 'clock'];
-        // For one kiosk photo: [kind, tooltip text], or null when it has not been checked yet.
+
+        // For one kiosk photo: [kind, tooltip text].
         $flagFor = function ($capture) {
             if ($capture->review_status === 'ok') {
                 return ['ok', 'Reviewed by staff: OK'];
@@ -57,7 +58,7 @@
                 $capture->match_status === 'no_reference' => ['info', 'No Koha photo to compare with'],
                 $capture->match_status === 'reference_unusable' => ['info', 'The Koha photo has no clear face to compare with'],
                 $capture->match_status === 'matched' => ['ok', 'Matches the Koha photo' . ($score ? " (score $score)" : '')],
-                default => ['pending', 'Not checked yet'],,
+                default => ['pending', 'Not checked yet'],
             };
         };
     @endphp
@@ -131,7 +132,7 @@
                                 <p class="text-xs text-gray-500">
                                     Card {{ $p['cardnumber'] ?? 'unknown' }}
                                     - {{ $p['total'] }} {{ \Illuminate\Support\Str::plural('photo', $p['total']) }}
-                                    - last on {{ $p['last_at']->format('d M Y, H:i') }}
+                                    - last on {{ $p['last_at']->timezone('Asia/Dhaka')->format('d M Y, H:i') }}
                                 </p>
                             </div>
 
@@ -144,13 +145,11 @@
                                                 <img src="{{ route('patron-verification.history.photo', $capture) }}" alt="Verification photo" loading="lazy"
                                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                                                 <div class="vh-missing">Photo file is not on this computer</div>
-                                                @if ($flag)
-                                                    <span class="vh-flag vh-{{ $flag[0] }}" title="{{ $flag[1] }}">{!! $icons[$iconFor[$flag[0]]] !!}</span>
-                                                @endif
+                                                <span class="vh-flag vh-{{ $flag[0] }}" title="{{ $flag[1] }}">{!! $icons[$iconFor[$flag[0]]] !!}</span>
                                             </div>
                                         </a>
                                         <p class="vh-cap text-gray-500 capitalize">{{ $capture->action }}@if ($capture->barcode) - {{ $capture->barcode }}@endif</p>
-                                        <p class="vh-cap text-gray-400">{{ $capture->created_at->format('d M Y, H:i') }}</p>
+                                        <p class="vh-cap text-gray-400">{{ $capture->created_at->timezone('Asia/Dhaka')->format('d M Y, H:i') }}</p>
                                         @unless ($capture->face_detected)
                                             <p class="vh-cap text-red-600 font-medium">No face detected</p>
                                         @endunless

@@ -51,8 +51,7 @@ class KohaService
             throw new Exception('Koha API credentials (client_id or client_secret) are missing.');
         }
 
-        $response = Http::asForm()->post("{$this->baseUrl}/api/v1/oauth/token", [
-            'grant_type' => 'client_credentials',
+        $response = Http::asForm()->connectTimeout(5)->timeout(15)->post("{$this->baseUrl}/api/v1/oauth/token", [            'grant_type' => 'client_credentials',
             'client_id' => $this->clientId,
             'client_secret' => $this->clientSecret,
         ]);
@@ -102,6 +101,8 @@ class KohaService
         $token = $this->getAccessToken();
         $response = Http::withToken($token)
             ->acceptJson()
+            ->connectTimeout(5)
+            ->timeout(15)
             ->post("{$this->baseUrl}/api/v1/auth/password/validation", [
                 'identifier' => $identifier,
                 'password' => $password,
@@ -132,6 +133,8 @@ class KohaService
         $token = $this->getAccessToken();
         $response = Http::withToken($token)
             ->acceptJson()
+            ->connectTimeout(5)
+            ->timeout(15)
             ->get("{$this->baseUrl}/api/v1/patrons", [
                 'q' => json_encode(['cardnumber' => $cardnumber]),
             ]);

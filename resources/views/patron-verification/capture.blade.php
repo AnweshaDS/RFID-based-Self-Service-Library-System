@@ -69,7 +69,7 @@
                         <p class="text-xs text-gray-500">
                             Card {{ $capture->cardnumber ?? 'unknown' }}
                             - {{ ucfirst($capture->action) }}
-                            - {{ $capture->created_at->format('d M Y, H:i') }}
+                            - {{ $capture->created_at->timezone('Asia/Dhaka')->format('d M Y, H:i') }}
                         </p>
                     </div>
                     <div class="cp-nav">
@@ -143,7 +143,7 @@
 
                         @if ($capture->review_status)
                             <div class="text-xs text-gray-500" style="margin-top:4px;">
-                                By {{ $reviewer?->name ?? 'a staff member' }}@if ($capture->reviewed_at) on {{ \Illuminate\Support\Carbon::parse($capture->reviewed_at)->format('d M Y, H:i') }}@endif
+                                By {{ $reviewer?->name ?? 'a staff member' }}@if ($capture->reviewed_at) on {{ \Illuminate\Support\Carbon::parse($capture->reviewed_at)->timezone('Asia/Dhaka')->format('d M Y, H:i') }}@endif
                             </div>
                         @endif
                     </dd>
