@@ -24,6 +24,7 @@
         .vh-warn { color: #d97706; }
         .vh-info { color: #6b7280; }
         .vh-ok { color: #16a34a; }
+        .vh-pending { color: #9ca3af; }
         .vh-legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: #4b5563; }
         .vh-legend > span { display: inline-flex; align-items: center; gap: 6px; }
     </style>
@@ -34,9 +35,9 @@
             'info' => '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
             'check' => '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
             'flag' => '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>',
+            'clock' => '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
         ];
-        $iconFor = ['danger' => 'triangle', 'warn' => 'triangle', 'info' => 'info', 'ok' => 'check', 'flagged' => 'flag'];
-
+        $iconFor = ['danger' => 'triangle', 'warn' => 'triangle', 'info' => 'info', 'ok' => 'check', 'flagged' => 'flag', 'pending' => 'clock'];
         // For one kiosk photo: [kind, tooltip text], or null when it has not been checked yet.
         $flagFor = function ($capture) {
             if ($capture->review_status === 'ok') {
@@ -56,7 +57,7 @@
                 $capture->match_status === 'no_reference' => ['info', 'No Koha photo to compare with'],
                 $capture->match_status === 'reference_unusable' => ['info', 'The Koha photo has no clear face to compare with'],
                 $capture->match_status === 'matched' => ['ok', 'Matches the Koha photo' . ($score ? " (score $score)" : '')],
-                default => null,
+                default => ['pending', 'Not checked yet'],,
             };
         };
     @endphp
@@ -94,6 +95,7 @@
                     <span><span class="vh-info" style="display:inline-flex;">{!! $icons['info'] !!}</span> No Koha photo to compare with</span>
                     <span><span class="vh-ok" style="display:inline-flex;">{!! $icons['check'] !!}</span> Matches, or reviewed OK</span>
                     <span><span class="vh-flagged" style="display:inline-flex;">{!! $icons['flag'] !!}</span> Flagged by staff</span>
+                    <span><span class="vh-pending" style="display:inline-flex;">{!! $icons['clock'] !!}</span> Not checked yet</span>
                 </div>
             </div>
 

@@ -117,7 +117,15 @@
                     <dt>Books</dt>
                     <dd>
                         @forelse ($items as $item)
-                            <div>{{ $item['title'] ?? 'Title not available' }}@if (! empty($item['barcode'])) <span class="text-xs text-gray-500">({{ $item['barcode'] }})</span>@endif</div>
+                            <div>
+                                {{ $item['title'] ?? 'Title not available' }}
+                                @if (! empty($item['barcode']))
+                                    <span class="text-xs text-gray-500">({{ $item['barcode'] }})</span>
+                                @endif
+                                @if (array_key_exists('ok', $item) && ! $item['ok'])
+                                    <span class="text-xs" style="color:#b91c1c;">(not completed)</span>
+                                @endif
+                            </div>
                         @empty
                             <span class="text-gray-500">Not recorded for this photo.</span>
                         @endforelse

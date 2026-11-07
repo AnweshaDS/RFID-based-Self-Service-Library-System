@@ -56,6 +56,46 @@
                     @endif
                 </div>
             </div>
+                        {{-- Verification warnings: for staff who can open the verification pages --}}
+            @if ($hasPatronAccess && $verificationWarnings)
+                <div class="bg-white border-2 border-gray-200 rounded-lg shadow p-5" style="{{ $verificationWarnings['total'] > 0 ? 'border-color:#fca5a5;' : '' }}">
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="text-sm font-bold text-gray-600 uppercase tracking-wide">Verification warnings</p>
+                        <a href="{{ route('patron-verification.history', ['status' => 'needs_review']) }}" class="text-xs" style="color:#4f46e5;">Open all &rarr;</a>
+                    </div>
+
+                    @if ($verificationWarnings['total'] > 0)
+                        <p class="mt-3 text-sm text-gray-800">
+                            <span style="display:inline-flex; align-items:center; justify-content:center; min-width:26px; height:26px; padding:0 8px; border-radius:999px; background:#dc2626; color:#fff; font-weight:700;">{{ $verificationWarnings['total'] }}</span>
+                            {{ $verificationWarnings['total'] === 1 ? 'photo needs' : 'photos need' }} review.
+                        </p>
+
+                        <div class="mt-3 space-y-2">
+                            @foreach ($verificationWarnings['patrons'] as $row)
+                                <a href="{{ route('patron-verification.history', array_filter(['cardnumber' => $row->cardnumber, 'status' => 'needs_review'])) }}"
+                                   class="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-800">
+                                    <span>
+                                        {{ $row->patron_name ?? $row->cardnumber ?? 'Unknown patron' }}
+                                        @if ($row->cardnumber)
+                                            <span class="text-xs text-gray-500">({{ $row->cardnumber }})</span>
+                                        @endif
+                                    </span>
+                                    <span style="color:#b91c1c; font-weight:600;">{{ $row->warning_total }} to review</span>
+                                </a>
+                            @endforeach
+                        </div>
+                    @else
+                        <p class="mt-3 text-sm" style="color:#15803d;">&#10003; No photos need review.</p>
+                    @endif
+
+                    @if ($verificationWarnings['flagged'] > 0)
+                        <p class="mt-3 text-xs text-gray-500">
+                            {{ $verificationWarnings['flagged'] }} {{ $verificationWarnings['flagged'] === 1 ? 'photo is' : 'photos are' }} flagged as a problem.
+                            <a href="{{ route('patron-verification.history', ['status' => 'flagged']) }}" style="color:#4f46e5;">View</a>
+                        </p>
+                    @endif
+                </div>
+            @endif
 
             {{-- Main area: sidebar of Koha links + charts --}}
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">

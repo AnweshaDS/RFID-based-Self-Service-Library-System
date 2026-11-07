@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Models\PatronVerificationCapture;
 use App\Models\Role;
 use App\Models\TaskDelegation;
 use App\Services\KohaService;
+use App\Support\VerificationPhotos;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -89,7 +91,27 @@ class DashboardController extends Controller
             }
         }
 
-                $taskCompletionChart = null;
+        // Photos that need a staff decision, for staff who can open the verification pages
+        $verificationWarnings = null;
+        if ($hasPatronAccess) {
+            try {
+                $verificationWarnings = [
+                    'total' => VerificationPhotos::pendingWarningCount(),
+                    'flagged' => PatronVerificationCapture::where('review_status', 'flagged')->count(),
+                    'patrons' => VerificationPhotos::needsReview(PatronVerificationCapture::query())
+                        ->selectRaw('patron_id, MAX(patron_name) as patron_name, MAX(cardnumber) as cardnumber, COUNT(*) as warning_total, MAX(created_at) as last_at')
+                        ->groupBy('patron_id')
+                        ->orderByDesc('last_at')
+                        ->limit(5)
+                        ->get(),
+                ];
+            } catch (\Throwable $e) {
+                // Never break the dashboard because of the warnings panel
+                $verificationWarnings = null;
+            }
+        }
+
+        $taskCompletionChart = null;
         if ($roleNames->isNotEmpty()) {
             $days = collect(range(13, 0))->map(fn ($i) => now()->subDays($i)->toDateString());
 
@@ -116,8 +138,9 @@ class DashboardController extends Controller
             'circulationChart' => $circulationChart,
             'roleDistributionChart' => $roleDistributionChart,
             'delegationChart' => $delegationChart,
-            'newPatronsChart' => $newPatronsChart,            			    'hasCirculationAccess' => $hasCirculationAccess,
+            'newPatronsChart' => $newPatronsChart,
             'hasPatronAccess' => $hasPatronAccess,
+            'verificationWarnings' => $verificationWarnings,
             'taskCompletionChart' => $taskCompletionChart,
             'kohaStaffUrl' => rtrim((string) config('services.koha.staff_url'), '/'),
         ]);

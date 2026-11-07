@@ -148,6 +148,7 @@ class KioskCartController extends Controller
             }
 
             $results = $this->process($this->action($mode), $mode, $patron, $items);
+            $this->attachItemsToCapture((int) $captureId, $patronId, $mode, $results);
             $this->refreshPatron($patron, $mode, $results);
             $this->storeReceipt($mode, $patron, $results);
         } finally {
@@ -196,6 +197,33 @@ class KioskCartController extends Controller
         }
 
         return $results;
+    }
+
+        /** Remember which books this identity photo was taken for, so staff can see them later. */
+    private function attachItemsToCapture(int $captureId, string $patronId, string $mode, array $results): void
+    {
+        if ($captureId <= 0) {
+            return;
+        }
+
+        try {
+            PatronVerificationCapture::where('id', $captureId)
+                ->where('patron_id', $patronId)
+                ->where('action', $mode)
+                ->update([
+                    'transaction_items' => json_encode(
+                        collect($results)->map(fn ($r) => [
+                            'title' => $r['title'] ?? null,
+                            'barcode' => $r['barcode'] ?? null,
+                            'ok' => (bool) ($r['ok'] ?? false),
+                        ])->values()->all(),
+                        JSON_UNESCAPED_UNICODE
+                    ),
+                ]);
+        } catch (\Throwable $e) {
+            // The books are only a convenience for staff; never fail the patron's transaction over this.
+            Log::warning('Could not save the books on the verification photo: ' . $e->getMessage());
+        }
     }
 
     private function refreshPatron(array $patron, string $mode, array $results): void
