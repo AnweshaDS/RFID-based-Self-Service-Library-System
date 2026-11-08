@@ -65,6 +65,9 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware(['auth', 'role:Admin,Librarian'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminController::class, 'index'])->name('dashboard');
+    Route::get('/settings/photo-retention', [\App\Http\Controllers\RetentionSettingsController::class, 'edit'])->name('retention.edit');
+    Route::put('/settings/photo-retention', [\App\Http\Controllers\RetentionSettingsController::class, 'update'])->name('retention.update');
+
 });
 
 Route::prefix('patron')->name('patron.')->group(function () {

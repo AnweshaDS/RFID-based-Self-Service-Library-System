@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\PatronVerificationCapture;
+use App\Support\RetentionSettings;
 use App\Support\VerificationPhotos;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
@@ -10,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 class PruneVerificationPhotos extends Command
 {
     protected $signature = 'verification:prune
+        {--scheduled : Use the retention times an admin saved on the Photo Retention page (the daily job uses this)}
         {--card= : Only photos for this card number}
         {--older-than= : Only photos older than this many days}
         {--include-missing : Also delete records whose photo file is not on this computer}
@@ -23,8 +25,12 @@ class PruneVerificationPhotos extends Command
         $card = $this->option('card');
         $days = $this->option('older-than');
 
+        if ($this->option('scheduled')) {
+            $days = (string) RetentionSettings::normalDays();
+        }
+
         if (blank($card) and blank($days)) {
-            $this->error('Give --card=CARDNUMBER, --older-than=DAYS, or both.');
+            $this->error('Give --scheduled, --card=CARDNUMBER, --older-than=DAYS, or a combination.');
 
             return self::FAILURE;
         }
@@ -36,7 +42,7 @@ class PruneVerificationPhotos extends Command
         }
 
         $kept = 0;
-        $longLimit = null;
+        $flaggedDays = null;
 
         if (filled($days)) {
             if (! ctype_digit((string) $days)) {
@@ -45,20 +51,20 @@ class PruneVerificationPhotos extends Command
                 return self::FAILURE;
             }
 
-            $query->where('created_at', '<', now()->subDays((int) $days));
+            $normalDays = (int) $days;
 
-            // Photos that still need a staff decision, or were flagged, are kept longer.
-            if (! $this->option('include-protected')) {
-                $longLimit = max((int) $days, (int) config('kiosk.flagged_retention_days', 365));
-                $oldEnough = now()->subDays($longLimit);
+            if ($this->option('include-protected')) {
+                $query->where('created_at', '<', now()->subDays($normalDays));
+            } else {
+                // Photos that still need a staff decision, or were flagged, are kept longer.
+                $flaggedDays = max($normalDays, RetentionSettings::flaggedDays());
 
                 $kept = VerificationPhotos::awaitingOrFlagged(clone $query)
-                    ->where('created_at', '>=', $oldEnough)
+                    ->where('created_at', '<', now()->subDays($normalDays))
+                    ->where('created_at', '>=', now()->subDays($flaggedDays))
                     ->count();
 
-                $query->where(function ($q) use ($oldEnough) {
-                    VerificationPhotos::deletable($q)->orWhere('created_at', '<', $oldEnough);
-                });
+                VerificationPhotos::expired($query, $normalDays, $flaggedDays);
             }
         }
 
@@ -105,7 +111,7 @@ class PruneVerificationPhotos extends Command
         $this->info(($force ? 'Deleted ' : 'Would delete ') . $handled . ' record(s) and their photo files.');
 
         if ($kept > 0) {
-            $this->info("Kept {$kept} photo(s) that still need review or were flagged (they are kept up to {$longLimit} days).");
+            $this->info("Kept {$kept} photo(s) that still need review or were flagged (they are kept up to {$flaggedDays} days).");
         }
 
         if ($skipped > 0) {

@@ -8,16 +8,15 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Delete kiosk verification photos older than the retention period (90 days by default,
-// never less than 7). Only photos stored on this computer are removed, so run the
-// scheduler on one computer only.
-Schedule::command('verification:prune', [
-    '--older-than' => max(7, (int) config('kiosk.photo_retention_days', 90)),
-    '--force' => true,
-])->dailyAt('02:00')->withoutOverlapping();
+// Delete kiosk verification photos that are past the retention time an admin set on the
+// Photo Retention page (90 days by default, never less than 7). Photos that still need
+// review, or were flagged, are kept longer. Run the scheduler on one computer only.
+Schedule::command('verification:prune', ['--scheduled' => true, '--force' => true])
+    ->dailyAt('02:00')
+    ->withoutOverlapping();
 
-// Compare new kiosk photos with the patron's Koha photo. Only photos whose file is on
-// this computer are checked.
+// Compare new kiosk photos with the patron's Koha photo. Only photos whose file can be
+// reached from this computer are checked.
 Schedule::command('verification:match', ['--limit' => 10])
     ->everyMinute()
     ->withoutOverlapping();

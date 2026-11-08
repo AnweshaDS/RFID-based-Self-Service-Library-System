@@ -39,6 +39,21 @@ class VerificationPhotos
         return $query->whereRaw('COALESCE(' . self::PROTECTED_SQL . ', 0) = 0');
     }
 
+    /**
+     * Photos past their retention time: older than $normalDays, or, when they still
+     * need a decision or were flagged, older than $flaggedDays.
+     */
+    public static function expired(Builder $query, int $normalDays, int $flaggedDays): Builder
+    {
+        $flaggedCutoff = now()->subDays($flaggedDays);
+
+        return $query
+            ->where('created_at', '<', now()->subDays($normalDays))
+            ->where(function (Builder $q) use ($flaggedCutoff) {
+                self::deletable($q)->orWhere('created_at', '<', $flaggedCutoff);
+            });
+    }
+
     /** Whether this user may use the verification pages (same rule as the Patrons menu entry). */
     public static function userCanReview(User $user): bool
     {
