@@ -20,6 +20,7 @@
 
     <div class="py-12">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-6">
+            <a href="{{ route('admin.settings') }}" style="font-size: 13px; color: #4f46e5; text-decoration: none;">&larr; Back to Settings</a>
 
             @if (session('status'))
                 <div class="rt-notice">{{ session('status') }}</div>

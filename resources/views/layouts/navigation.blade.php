@@ -3,17 +3,19 @@
     $canReviewPhotos = $navUser && \App\Support\VerificationPhotos::userCanReview($navUser);
     $pendingWarnings = $canReviewPhotos ? \App\Support\VerificationPhotos::pendingWarningCount() : 0;
     $navBadgeStyle = 'margin-left:6px; display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; padding:0 6px; border-radius:999px; background:#dc2626; color:#fff; font-size:11px; font-weight:700;';
+    $smartlibName = config('smartlib.name');
 @endphp
 <nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
             <div class="flex">
-                <!-- Logo -->
+                <!-- Logo and project name -->
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}">
                         <x-application-logo class="block h-9 w-auto fill-current text-gray-800" />
                     </a>
+                    <a href="{{ route('dashboard') }}" style="margin-left: 12px; font-weight: 700; font-size: 16px; color: #1f2937; text-decoration: none;">{{ $smartlibName }}</a>
                 </div>
 
                 <!-- Navigation Links -->
@@ -32,8 +34,16 @@
                     @endif
 
                     @if (Auth::user() && (Auth::user()->hasRole('Admin') || Auth::user()->hasRole('Librarian')))
-                        <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.*')">
+                        {{-- Changed: only the dashboard page itself, not the settings pages --}}
+                        <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')">
                             {{ __('Admin Dashboard') }}
+                        </x-nav-link>
+                    @endif
+
+                    {{-- New: Settings, for Admin only --}}
+                    @if (Auth::user() && Auth::user()->hasRole('Admin'))
+                        <x-nav-link :href="route('admin.settings')" :active="request()->routeIs('admin.settings') || request()->routeIs('admin.retention.*')">
+                            {{ __('Settings') }}
                         </x-nav-link>
                     @endif
 
@@ -71,25 +81,25 @@
                             {{ __('Profile') }}
                         </x-dropdown-link>
 
-                        <!-- Authentication -->
+                        <!-- Log out of this system only -->
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
 
                             <x-dropdown-link :href="route('logout')"
                                     onclick="event.preventDefault();
                                                 this.closest('form').submit();">
-                                {{ __('Log Out') }}
+                                {{ __('Log Out of :name', ['name' => $smartlibName]) }}
                             </x-dropdown-link>
                         </form>
 
-                        <!-- Log out of Laravel and Koha -->
+                        <!-- Log out of this system and Koha -->
                         <form method="POST" action="{{ route('logout.koha') }}">
                             @csrf
 
                             <x-dropdown-link :href="route('logout.koha')"
                                     onclick="event.preventDefault();
                                                 this.closest('form').submit();">
-                                {{ __('Log Out of Laravel and Koha') }}
+                                {{ __('Log Out of :name and Koha', ['name' => $smartlibName]) }}
                             </x-dropdown-link>
                         </form>
                     </x-slot>
@@ -125,8 +135,14 @@
             @endif
 
             @if (Auth::user() && (Auth::user()->hasRole('Admin') || Auth::user()->hasRole('Librarian')))
-                <x-responsive-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.*')">
+                <x-responsive-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')">
                     {{ __('Admin Dashboard') }}
+                </x-responsive-nav-link>
+            @endif
+
+            @if (Auth::user() && Auth::user()->hasRole('Admin'))
+                <x-responsive-nav-link :href="route('admin.settings')" :active="request()->routeIs('admin.settings') || request()->routeIs('admin.retention.*')">
+                    {{ __('Settings') }}
                 </x-responsive-nav-link>
             @endif
 
@@ -149,25 +165,25 @@
                     {{ __('Profile') }}
                 </x-responsive-nav-link>
 
-                <!-- Authentication -->
+                <!-- Log out of this system only -->
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
 
                     <x-responsive-nav-link :href="route('logout')"
                             onclick="event.preventDefault();
                                         this.closest('form').submit();">
-                        {{ __('Log Out') }}
+                        {{ __('Log Out of :name', ['name' => $smartlibName]) }}
                     </x-responsive-nav-link>
                 </form>
 
-                <!-- Log out of Laravel and Koha -->
+                <!-- Log out of this system and Koha -->
                 <form method="POST" action="{{ route('logout.koha') }}">
                     @csrf
 
                     <x-responsive-nav-link :href="route('logout.koha')"
                             onclick="event.preventDefault();
                                         this.closest('form').submit();">
-                        {{ __('Log Out of Laravel and Koha') }}
+                        {{ __('Log Out of :name and Koha', ['name' => $smartlibName]) }}
                     </x-responsive-nav-link>
                 </form>
             </div>
