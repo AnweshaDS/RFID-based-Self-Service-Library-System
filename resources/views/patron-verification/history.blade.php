@@ -89,6 +89,7 @@
                         Filter
                     </button>
                 </form>
+                <a href="{{ route('patron-verification.report') }}" style="display: inline-block; font-size: 13px; font-weight: 600; color: #4f46e5; text-decoration: none;">Weekly report and export &rarr;</a>
 
                 <div class="vh-legend">
                     <span><span class="vh-danger" style="display:inline-flex;">{!! $icons['triangle'] !!}</span> Does not match the Koha photo</span>

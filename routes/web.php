@@ -58,6 +58,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/patron-verification/history/{capture}/photo', [\App\Http\Controllers\PatronVerificationReviewController::class, 'photo'])->name('patron-verification.history.photo');
     Route::get('/patron-verification/history/{capture}', [\App\Http\Controllers\PatronVerificationReviewController::class, 'show'])->name('patron-verification.history.show');
     Route::post('/patron-verification/history/{capture}/review', [\App\Http\Controllers\PatronVerificationReviewController::class, 'review'])->name('patron-verification.history.review');
+    Route::get('/patron-verification/report', [\App\Http\Controllers\PatronVerificationReportController::class, 'index'])->name('patron-verification.report');
+    Route::get('/patron-verification/report/csv', [\App\Http\Controllers\PatronVerificationReportController::class, 'csv'])->name('patron-verification.report.csv');
+    Route::get('/patron-verification/report/print', [\App\Http\Controllers\PatronVerificationReportController::class, 'print'])->name('patron-verification.report.print');
     Route::get('/patron-verification', [\App\Http\Controllers\PatronVerificationController::class, 'show'])->name('patron-verification');
     Route::post('/patron-verification', [\App\Http\Controllers\PatronVerificationController::class, 'search'])->name('patron-verification.search');
     Route::get('/patron-verification/{patronId}/photo', [\App\Http\Controllers\PatronVerificationController::class, 'photo'])->name('patron-verification.photo');
