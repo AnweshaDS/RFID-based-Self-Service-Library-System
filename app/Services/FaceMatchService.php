@@ -57,12 +57,23 @@ class FaceMatchService
         return $this->save($capture, $result['status'], $result['score'] ?? null);
     }
 
+    /**
+     * Saves the face match result to the database.
+     */
     private function save(PatronVerificationCapture $capture, string $status, ?float $score): string
     {
+        // The server's own check is the judge of whether a face was in the photo.
+        $faceFound = match ($status) {
+            'matched', 'mismatch' => true,
+            'no_face' => false,
+            default => (bool) $capture->face_detected,
+        };
+
         $capture->forceFill([
             'match_status' => $status,
             'match_score' => $score,
             'matched_at' => now(),
+            'face_detected' => $faceFound,
         ])->save();
 
         return $status;
