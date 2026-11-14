@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 
 class LoginRequest extends FormRequest
 {
@@ -33,28 +35,19 @@ class LoginRequest extends FormRequest
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-    public function authenticate(): void
+        public function authenticate(): void
     {
         $this->ensureIsNotRateLimited();
 
-        try {
-            $user = app(KohaAuthService::class)->attempt(
-                $this->string('identifier')->toString(),
-                $this->string('password')->toString()
-            );
-        } catch (\Throwable $e) {
-            report($e);
+        $identifier = trim($this->string('identifier')->toString());
 
-            throw ValidationException::withMessages([
-                'identifier' => 'The library system is temporarily unavailable. Please try again later.',
-            ]);
-        }
+        $user = User::where('koha_cardnumber', $identifier)->first();
 
-        if (! $user) {
+        if (! $user || ! Hash::check($this->string('password')->toString(), $user->password)) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'identifier' => 'These credentials do not match our library records.',
+                'identifier' => 'These credentials do not match our records.',
             ]);
         }
 
