@@ -74,20 +74,16 @@ class AdminController extends Controller
         $sort = in_array($request->input('sort'), $sortable, true) ? $request->input('sort') : 'created_at';
         $dir = $request->input('dir') === 'asc' ? 'asc' : 'desc';
 
-$groupRules = [
-            'borrow'  => ['action', ['borrow', 'return']],
-            'return'  => ['action', ['return', 'borrow']],
-            'success' => ['status', ['success', 'failed']],
-            'failed'  => ['status', ['failed', 'success']],
-            'kiosk-1' => ['kiosk_id', ['kiosk-1', 'kiosk-2']],
-            'kiosk-2' => ['kiosk_id', ['kiosk-2', 'kiosk-1']],
-        ];
-        $group = $request->input('group');
-        if (isset($groupRules[$group])) {
-            [$col, $order] = $groupRules[$group];
-            $query->orderByRaw("CASE WHEN {$col} = ? THEN 0 WHEN {$col} = ? THEN 1 ELSE 2 END", $order)
-                ->orderBy($col);
+$group = (string) $request->input('group', '');
+        if (str_contains($group, ':')) {
+            [$col, $first] = explode(':', $group, 2);
+            if (in_array($col, ['action', 'status', 'kiosk_id'], true)) {
+                $query->orderByRaw("CASE WHEN {$col} = ? THEN 0 ELSE 1 END", [$first])
+                    ->orderByRaw("{$col} IS NULL")
+                    ->orderBy($col);
+            }
         }
+
 
         $recentActivities = $query->orderBy($sort, $dir)->orderByDesc('id')->paginate(20)->withQueryString();
         $actionOptions = ActivityLog::select('action')->distinct()->orderBy('action')->pluck('action');

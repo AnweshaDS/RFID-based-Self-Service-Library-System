@@ -83,32 +83,49 @@
                         <option value="kiosk-2" @selected(request('kiosk') === 'kiosk-2')>Kiosk-2</option>
                     </select>
 
-<select name="group" class="rounded-md border-gray-300 text-sm">
-                        <option value="">Group: none (time only)</option>
-                        <optgroup label="Action">
-                            <option value="borrow" @selected(request('group') === 'borrow')>Borrow first, then return</option>
-                            <option value="return" @selected(request('group') === 'return')>Return first, then borrow</option>
-                        </optgroup>
-                        <optgroup label="Status">
-                            <option value="success" @selected(request('group') === 'success')>Success first</option>
-                            <option value="failed" @selected(request('group') === 'failed')>Failed first</option>
-                        </optgroup>
-                        <optgroup label="Kiosk">
-                            <option value="kiosk-1" @selected(request('group') === 'kiosk-1')>Kiosk-1 first</option>
-                            <option value="kiosk-2" @selected(request('group') === 'kiosk-2')>Kiosk-2 first</option>
-                        </optgroup>
-                    </select>
+<input type="hidden" name="group" value="{{ request('group') }}">
 
                     <input type="text" name="patron" value="{{ request('patron') }}" placeholder="Patron ID (e.g. STU002)" class="rounded-md border-gray-300 text-sm">
                     <input type="text" name="barcode" value="{{ request('barcode') }}" placeholder="Barcode (e.g. BOOK001)" class="rounded-md border-gray-300 text-sm">
-                    <input type="text" name="message" value="{{ request('message') }}" placeholder="Message contains..." class="rounded-md border-gray-300 text-sm">
-                    <input type="date" name="from" value="{{ request('from') }}" class="rounded-md border-gray-300 text-sm" title="From date">
-                    <input type="date" name="to" value="{{ request('to') }}" class="rounded-md border-gray-300 text-sm" title="To date">
+                    <input type="text" name="message" value="{{ request('message') }}" placeholder="Message contains..." class="rounded-md border-gray-300 text-sm">                    
+<div style="grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px;">
+                        <label class="flex flex-col text-xs text-gray-500">From date
+                            <input type="date" name="from" value="{{ request('from') }}" class="mt-1 rounded-md border-gray-300 text-sm">
+                        </label>
+                        <label class="flex flex-col text-xs text-gray-500">To date
+                            <input type="date" name="to" value="{{ request('to') }}" class="mt-1 rounded-md border-gray-300 text-sm">
+                        </label>
+                        <button type="submit" style="height: 38px; padding: 0 20px;" class="rounded-md bg-gray-800 text-xs font-semibold uppercase tracking-wide text-white">Filter</button>
+                        <a href="{{ route('admin.dashboard') }}" style="height: 38px; padding: 0 20px; display: inline-flex; align-items: center;" class="rounded-md border border-gray-300 text-xs font-semibold uppercase tracking-wide text-gray-700">Clear</a>
+                    </div>                </form>
+<form method="GET" action="{{ route('admin.dashboard') }}" style="margin-top: 16px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px;">
+                    @foreach (['action', 'status', 'kiosk', 'patron', 'barcode', 'message', 'from', 'to', 'sort', 'dir'] as $keep)
+                        @if (request()->filled($keep))
+                            <input type="hidden" name="{{ $keep }}" value="{{ request($keep) }}">
+                        @endif
+                    @endforeach
 
-                    <div class="flex gap-2 sm:col-span-2 lg:col-span-4">
-                        <button type="submit" class="rounded-md bg-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white">Filter</button>
-                        <a href="{{ route('admin.dashboard') }}" class="rounded-md border border-gray-300 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-700">Clear</a>
-                    </div>
+                    <label class="flex flex-col text-xs text-gray-500">Group (shown first)
+                        <select name="group" class="mt-1 rounded-md border-gray-300 text-sm">
+                            <option value="">None (time only)</option>
+                            <optgroup label="Action">
+                                @foreach ($actionOptions as $opt)
+                                    <option value="action:{{ $opt }}" @selected(request('group') === 'action:' . $opt)>{{ ucfirst(str_replace('_', ' ', $opt)) }}</option>
+                                @endforeach
+                            </optgroup>
+                            <optgroup label="Status">
+                                @foreach ($statusOptions as $opt)
+                                    <option value="status:{{ $opt }}" @selected(request('group') === 'status:' . $opt)>{{ ucfirst($opt) }}</option>
+                                @endforeach
+                            </optgroup>
+                            <optgroup label="Kiosk">
+                                <option value="kiosk_id:kiosk-1" @selected(request('group') === 'kiosk_id:kiosk-1')>Kiosk-1</option>
+                                <option value="kiosk_id:kiosk-2" @selected(request('group') === 'kiosk_id:kiosk-2')>Kiosk-2</option>
+                            </optgroup>
+                        </select>
+                    </label>
+                    <button type="submit" style="height: 38px; padding: 0 20px;" class="rounded-md bg-gray-800 text-xs font-semibold uppercase tracking-wide text-white">Apply group</button>
+                    <a href="{{ request()->fullUrlWithQuery(['group' => null, 'page' => null]) }}" style="height: 38px; padding: 0 20px; display: inline-flex; align-items: center;" class="rounded-md border border-gray-300 text-xs font-semibold uppercase tracking-wide text-gray-700">Remove group</a>
                 </form>
 
 
