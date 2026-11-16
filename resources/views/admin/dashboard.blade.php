@@ -79,10 +79,24 @@
 
                     <select name="kiosk" class="rounded-md border-gray-300 text-sm">
                         <option value="">All kiosks</option>
-                        @foreach ($kioskOptions as $opt)
-                            <option value="{{ $opt }}" @selected(request('kiosk') === $opt)>{{ $opt }}</option>
-                        @endforeach
-                        <option value="none" @selected(request('kiosk') === 'none')>Before tracking</option>
+                        <option value="kiosk-1" @selected(request('kiosk') === 'kiosk-1')>Kiosk-1</option>
+                        <option value="kiosk-2" @selected(request('kiosk') === 'kiosk-2')>Kiosk-2</option>
+                    </select>
+
+<select name="group" class="rounded-md border-gray-300 text-sm">
+                        <option value="">Group: none (time only)</option>
+                        <optgroup label="Action">
+                            <option value="borrow" @selected(request('group') === 'borrow')>Borrow first, then return</option>
+                            <option value="return" @selected(request('group') === 'return')>Return first, then borrow</option>
+                        </optgroup>
+                        <optgroup label="Status">
+                            <option value="success" @selected(request('group') === 'success')>Success first</option>
+                            <option value="failed" @selected(request('group') === 'failed')>Failed first</option>
+                        </optgroup>
+                        <optgroup label="Kiosk">
+                            <option value="kiosk-1" @selected(request('group') === 'kiosk-1')>Kiosk-1 first</option>
+                            <option value="kiosk-2" @selected(request('group') === 'kiosk-2')>Kiosk-2 first</option>
+                        </optgroup>
                     </select>
 
                     <input type="text" name="patron" value="{{ request('patron') }}" placeholder="Patron ID (e.g. STU002)" class="rounded-md border-gray-300 text-sm">
@@ -97,9 +111,7 @@
                     </div>
                 </form>
 
-                <div class="mt-4">
-                    {{ $recentActivities->links() }}
-                </div>
+
 
                 <div class="mt-4 overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200 text-sm">
@@ -136,6 +148,9 @@
                             @endforelse
                         </tbody>
                     </table>
+                </div>
+<div class="mt-4">
+                    {{ $recentActivities->links() }}
                 </div>
             </div>
 
