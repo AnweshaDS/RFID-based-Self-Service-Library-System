@@ -4,13 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\PatronVerificationCapture;
 use App\Models\User;
-use App\Services\FaceMatchService;
 use App\Support\VerificationPhotos;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -22,8 +22,19 @@ class PatronVerificationReportController extends Controller
     /** Longest period one report may cover, in days. */
     private const MAX_DAYS = 31;
 
-    /** Most photos one printable report shows. */
-    private const MAX_PRINT_PHOTOS = 150;
+    private const DEFAULT_SCOPE = 'all_warnings';
+
+    /** What a report can include: key => [label, short explanation]. */
+    private const SCOPES = [
+        'all' => ['All transactions', 'Every photo in the period, whatever its result.'],
+        'system_verified' => ['Verified by the system', 'The face check matched the Koha photo, and no staff decision was needed.'],
+        'staff_verified' => ['Verified by staff', 'A staff member reviewed the photo and marked it OK.'],
+        'flagged' => ['Flagged by staff', 'A staff member flagged the photo as a problem.'],
+        'needs_review' => ['Not verified: still has a warning', 'No match, or no face found, and no staff decision yet.'],
+        'all_warnings' => ['All warnings', 'No match, no face found, or flagged, whatever staff decided.'],
+        'not_checked' => ['Not checked by the system yet', 'The face check has not run on these photos.'],
+        'no_reference' => ['No Koha photo to compare with', 'The patron has no usable registered photo, so no check was possible.'],
+    ];
 
     private function ensureAccess(Request $request): void
     {
@@ -40,6 +51,7 @@ class PatronVerificationReportController extends Controller
         $request->validate([
             'from' => ['nullable', 'date_format:Y-m-d'],
             'to' => ['nullable', 'date_format:Y-m-d'],
+            'scope' => ['nullable', Rule::in(array_keys(self::SCOPES))],
             'only_open' => ['nullable', 'boolean'],
         ]);
 
@@ -69,36 +81,52 @@ class PatronVerificationReportController extends Controller
         return [$start, $end, $from->format('Y-m-d'), $to->format('Y-m-d')];
     }
 
-    /** Photos with a warning in the period: no match, no face, or flagged by staff. */
-    private function warningQuery(Carbon $start, Carbon $end, bool $onlyOpen): Builder
+    /** The chosen option. Older links that only had the tick box still work. */
+    private function scope(Request $request): string
+    {
+        $scope = $request->input('scope');
+
+        if (! $scope && $request->boolean('only_open')) {
+            return 'needs_review';
+        }
+
+        return $scope ?: self::DEFAULT_SCOPE;
+    }
+
+    /** Photos in the period that belong to the chosen option. */
+    private function scopeQuery(Carbon $start, Carbon $end, string $scope): Builder
     {
         $query = PatronVerificationCapture::query()->whereBetween('created_at', [$start, $end]);
 
-        if ($onlyOpen) {
-            return VerificationPhotos::needsReview($query);
-        }
-
-        return $query->where(function (Builder $q) {
-            $q->whereIn('match_status', FaceMatchService::WARNING_STATUSES)
-                ->orWhere(function (Builder $legacy) {
-                    // Older photos that were never checked, where the kiosk itself saw no face
-                    $legacy->whereNull('match_status')->where('face_detected', false);
-                })
-                ->orWhere('review_status', 'flagged');
-        });
+        return match ($scope) {
+            'all' => $query,
+            'system_verified' => $query->where('match_status', 'matched')->whereNull('review_status'),
+            'staff_verified' => $query->where('review_status', 'ok'),
+            'flagged' => $query->where('review_status', 'flagged'),
+            'needs_review' => VerificationPhotos::needsReview($query),
+            'not_checked' => $query->whereNull('match_status'),
+            'no_reference' => $query->whereIn('match_status', ['no_reference', 'reference_unusable']),
+            default => $query->where(function (Builder $q) {
+                $q->whereIn('match_status', ['mismatch', 'no_face'])
+                    ->orWhere(function (Builder $legacy) {
+                        // Older photos that were never checked, where the kiosk itself saw no face
+                        $legacy->whereNull('match_status')->where('face_detected', false);
+                    })
+                    ->orWhere('review_status', 'flagged');
+            }),
+        };
     }
 
-    private function kind(PatronVerificationCapture $c): string
+    /** The system's result for one photo: matched, mismatch, no_face, no_reference or pending. */
+    private function systemResult(PatronVerificationCapture $c): string
     {
-        if ($c->match_status === 'mismatch') {
-            return 'mismatch';
-        }
-
-        if ($c->match_status === 'no_face' || ($c->match_status === null && ! $c->face_detected)) {
-            return 'no_face';
-        }
-
-        return 'other';
+        return match (true) {
+            $c->match_status === 'matched' => 'matched',
+            $c->match_status === 'mismatch' => 'mismatch',
+            $c->match_status === 'no_face', $c->match_status === null && ! $c->face_detected => 'no_face',
+            in_array($c->match_status, ['no_reference', 'reference_unusable'], true) => 'no_reference',
+            default => 'pending',
+        };
     }
 
     private function resultLabel(PatronVerificationCapture $c): string
@@ -165,16 +193,28 @@ class PatronVerificationReportController extends Controller
         return $time ? $time->copy()->timezone(self::TIMEZONE)->format($format) : '';
     }
 
-    /** @return array<string, int> */
+    /**
+     * Counts for the chosen photos, in two parts that each add up to the total:
+     * the system's result and the staff decision.
+     *
+     * @return array<string, int>
+     */
     private function summary(Collection $rows): array
     {
+        $system = $rows->countBy(fn ($c) => $this->systemResult($c));
+        $staff = $rows->countBy(fn ($c) => $c->review_status ?? 'none');
+
         return [
             'total' => $rows->count(),
-            'mismatch' => $rows->filter(fn ($c) => $this->kind($c) === 'mismatch')->count(),
-            'no_face' => $rows->filter(fn ($c) => $this->kind($c) === 'no_face')->count(),
-            'flagged' => $rows->where('review_status', 'flagged')->count(),
-            'reviewed_ok' => $rows->where('review_status', 'ok')->count(),
-            'open' => $rows->filter(fn ($c) => $c->review_status === null && in_array($this->kind($c), ['mismatch', 'no_face'], true))->count(),
+            'matched' => (int) $system->get('matched', 0),
+            'mismatch' => (int) $system->get('mismatch', 0),
+            'no_face' => (int) $system->get('no_face', 0),
+            'no_reference' => (int) $system->get('no_reference', 0),
+            'pending' => (int) $system->get('pending', 0),
+            'ok' => (int) $staff->get('ok', 0),
+            'flagged' => (int) $staff->get('flagged', 0),
+            'none' => (int) $staff->get('none', 0),
+            'open' => $rows->filter(fn ($c) => $c->review_status === null && in_array($this->systemResult($c), ['mismatch', 'no_face'], true))->count(),
         ];
     }
 
@@ -183,18 +223,19 @@ class PatronVerificationReportController extends Controller
         $this->ensureAccess($request);
 
         [$start, $end, $from, $to] = $this->range($request);
-        $onlyOpen = $request->boolean('only_open');
+        $scope = $this->scope($request);
 
-        $rows = $this->warningQuery($start, $end, $onlyOpen)
+        $rows = $this->scopeQuery($start, $end, $scope)
             ->get(['id', 'match_status', 'review_status', 'face_detected']);
 
         return view('patron-verification.report', [
             'from' => $from,
             'to' => $to,
-            'onlyOpen' => $onlyOpen,
+            'scope' => $scope,
+            'scopes' => self::SCOPES,
+            'scopeLabel' => self::SCOPES[$scope][0],
             'summary' => $this->summary($rows),
             'maxDays' => self::MAX_DAYS,
-            'maxPhotos' => self::MAX_PRINT_PHOTOS,
         ]);
     }
 
@@ -203,9 +244,9 @@ class PatronVerificationReportController extends Controller
         $this->ensureAccess($request);
 
         [$start, $end, $from, $to] = $this->range($request);
-        $onlyOpen = $request->boolean('only_open');
+        $scope = $this->scope($request);
 
-        $rows = $this->warningQuery($start, $end, $onlyOpen)
+        $rows = $this->scopeQuery($start, $end, $scope)
             ->orderBy('created_at')
             ->orderBy('id')
             ->get();
@@ -213,14 +254,15 @@ class PatronVerificationReportController extends Controller
         $reviewers = $this->reviewerNames($rows);
 
         Log::info(sprintf(
-            'Verification warnings CSV exported by user %d for %s to %s (%d rows).',
+            'Verification report CSV (%s) exported by user %d for %s to %s (%d rows).',
+            $scope,
             $request->user()->id,
             $from,
             $to,
             $rows->count()
         ));
 
-        $filename = "verification-warnings-{$from}-to-{$to}.csv";
+        $filename = "verification-report-{$scope}-{$from}-to-{$to}.csv";
 
         return response()->streamDownload(function () use ($rows, $reviewers) {
             $out = fopen('php://output', 'w');
@@ -261,29 +303,30 @@ class PatronVerificationReportController extends Controller
         $this->ensureAccess($request);
 
         [$start, $end, $from, $to] = $this->range($request);
-        $onlyOpen = $request->boolean('only_open');
+        $scope = $this->scope($request);
 
-        $query = $this->warningQuery($start, $end, $onlyOpen);
+        // Every matching photo is included. There is no limit on the number.
+        $rows = $this->scopeQuery($start, $end, $scope)
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get();
 
-        $summary = $this->summary((clone $query)->get(['id', 'match_status', 'review_status', 'face_detected']));
-
-        $rows = $query->orderBy('created_at')->orderBy('id')->limit(self::MAX_PRINT_PHOTOS)->get();
         $reviewers = $this->reviewerNames($rows);
 
         Log::info(sprintf(
-            'Verification warnings report printed by user %d for %s to %s (%d of %d shown).',
+            'Verification report (%s) printed by user %d for %s to %s (%d photos).',
+            $scope,
             $request->user()->id,
             $from,
             $to,
-            $rows->count(),
-            $summary['total']
+            $rows->count()
         ));
 
         $entries = $rows->map(fn ($c) => [
             'capture' => $c,
             'when' => $this->localTime($c->created_at, 'd M Y, H:i'),
             'result' => $this->resultLabel($c),
-            'kind' => $this->kind($c),
+            'kind' => $this->systemResult($c),
             'score' => $c->match_score !== null ? number_format((float) $c->match_score, 2) : null,
             'review' => $this->reviewLabel($c),
             'reviewer' => $c->reviewed_by ? ($reviewers[$c->reviewed_by] ?? null) : null,
@@ -293,11 +336,11 @@ class PatronVerificationReportController extends Controller
 
         return view('patron-verification.report-print', [
             'entries' => $entries,
-            'summary' => $summary,
+            'summary' => $this->summary($rows),
             'from' => $from,
             'to' => $to,
-            'onlyOpen' => $onlyOpen,
-            'shown' => $rows->count(),
+            'scope' => $scope,
+            'scopeLabel' => self::SCOPES[$scope][0],
             'generatedAt' => Carbon::now(self::TIMEZONE)->format('d M Y, H:i'),
             'generatedBy' => $request->user()->name,
         ]);
