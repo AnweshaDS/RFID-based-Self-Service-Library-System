@@ -42,8 +42,10 @@ class PruneVerificationPhotosCommandTest extends TestCase
             'cardnumber' => 'STU001',
             'action' => 'borrow',
             'photo_path' => 'patron-verification-captures/old.jpg',
-            'created_at' => now()->subDays(100),
         ]);
+        $capture->timestamps = false;
+        $capture->created_at = now()->subDays(100);
+        $capture->save();
 
         $this->artisan('verification:prune --older-than=30')
             ->expectsOutputToContain('Dry run')
@@ -63,11 +65,13 @@ class PruneVerificationPhotosCommandTest extends TestCase
             'cardnumber' => 'STU001',
             'action' => 'borrow',
             'photo_path' => 'patron-verification-captures/old.jpg',
-            'created_at' => now()->subDays(100),
         ]);
+        $capture->timestamps = false;
+        $capture->created_at = now()->subDays(100);
+        $capture->save();
 
         $this->artisan('verification:prune --older-than=30 --force')
-            ->expectsOutputToContain('Deleted 1 photo')
+            ->expectsOutputToContain('Deleted 1 record(s)')
             ->assertSuccessful();
 
         $this->assertDatabaseMissing('patron_verification_captures', ['id' => $capture->id]);
@@ -88,16 +92,20 @@ class PruneVerificationPhotosCommandTest extends TestCase
             'action' => 'borrow',
             'photo_path' => 'patron-verification-captures/normal_old.jpg',
             'review_status' => 'ok',
-            'created_at' => now()->subDays(40),
         ]);
+        $normal->timestamps = false;
+        $normal->created_at = now()->subDays(40);
+        $normal->save();
 
         $flagged = PatronVerificationCapture::create([
             'patron_id' => '10022',
             'action' => 'borrow',
             'photo_path' => 'patron-verification-captures/flagged_old.jpg',
             'review_status' => 'flagged',
-            'created_at' => now()->subDays(40),
         ]);
+        $flagged->timestamps = false;
+        $flagged->created_at = now()->subDays(40);
+        $flagged->save();
 
         $this->artisan('verification:prune --scheduled --force')
             ->assertSuccessful();

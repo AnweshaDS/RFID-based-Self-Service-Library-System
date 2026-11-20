@@ -2,8 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Services\KioskCartService;
+use App\Services\KohaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Session;
 use Tests\TestCase;
 
 class KioskReturnTest extends TestCase
@@ -22,17 +25,15 @@ class KioskReturnTest extends TestCase
 
     protected function createPatronSession(array $borrowedBooks = []): void
     {
-        session([
-            'kiosk_patron' => [
-                'patron_id' => '10021',
-                'cardnumber' => 'STU001',
-                'name' => 'Arif Hasan',
-                'status' => 'Active',
-                'borrowed_books' => $borrowedBooks,
-                'recent_activity' => [],
-            ],
-            'kiosk_last_activity' => now(),
+        Session::put('kiosk_patron', [
+            'patron_id' => '10021',
+            'cardnumber' => 'STU001',
+            'name' => 'Arif Hasan',
+            'status' => 'Active',
+            'borrowed_books' => $borrowedBooks,
+            'recent_activity' => [],
         ]);
+        Session::put('kiosk_last_activity', now());
     }
 
     public function test_return_page_requires_patron_session(): void
@@ -43,7 +44,7 @@ class KioskReturnTest extends TestCase
         $response->assertSessionHasErrors(['uid' => 'Please scan your RFID card first.']);
     }
 
-    public function test_return_page_displays_current_borrowed_books(): void
+    public function test_return_page_renders_cart_for_patron(): void
     {
         $this->createPatronSession([
             [
@@ -58,9 +59,8 @@ class KioskReturnTest extends TestCase
         $response = $this->get(route('kiosk.return'));
 
         $response->assertOk();
-        $response->assertSee('Clean Code');
-        $response->assertSee('Robert C. Martin');
-        $response->assertSee('BOOK001');
+        $response->assertViewIs('kiosk.cart');
+        $response->assertViewHas('mode', 'return');
     }
 
     public function test_unknown_barcode_gives_error(): void
@@ -77,7 +77,6 @@ class KioskReturnTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors(['barcode' => 'Book not found.']);
-        $this->assertFalse(session()->has('kiosk_return_item'));
     }
 
     public function test_item_not_checked_out_gives_error(): void
@@ -100,12 +99,10 @@ class KioskReturnTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors(['barcode' => 'This book is not currently borrowed on your account.']);
-        $this->assertFalse(session()->has('kiosk_return_item'));
     }
 
     public function test_item_borrowed_by_another_patron_cannot_be_returned_by_current_patron(): void
     {
-        // Patron has BOOK001
         $this->createPatronSession([
             [
                 'title' => 'Clean Code',
@@ -116,7 +113,6 @@ class KioskReturnTest extends TestCase
             ],
         ]);
 
-        // Attempting to return BOOK002 (borrowed by someone else)
         Http::fake([
             '*/api/v1/oauth/token' => Http::response(['access_token' => 'fake-token-123'], 200),
             '*/api/v1/items*' => Http::response([
@@ -133,10 +129,9 @@ class KioskReturnTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors(['barcode' => 'This book is not currently borrowed on your account.']);
-        $this->assertFalse(session()->has('kiosk_return_item'));
     }
 
-    public function test_confirmation_page_displays_selected_book(): void
+    public function test_valid_book_is_added_to_return_cart(): void
     {
         $this->createPatronSession([
             [
@@ -148,68 +143,87 @@ class KioskReturnTest extends TestCase
             ],
         ]);
 
-        session([
-            'kiosk_return_item' => [
-                'item_id' => 501,
-                'barcode' => 'BOOK001',
-                'biblio' => [
-                    'title' => 'Clean Code',
-                    'author' => 'Robert C. Martin',
+        Http::fake([
+            '*/api/v1/oauth/token' => Http::response(['access_token' => 'fake-token-123'], 200),
+            '*/api/v1/items*' => Http::response([
+                [
+                    'item_id' => 501,
+                    'barcode' => 'BOOK001',
+                    'biblio' => [
+                        'title' => 'Clean Code',
+                        'author' => 'Robert C. Martin',
+                    ],
                 ],
-            ],
+            ], 200),
         ]);
 
-        $response = $this->get(route('kiosk.return.confirm'));
+        $response = $this->post(route('kiosk.return.lookup'), [
+            'barcode' => 'BOOK001',
+        ]);
 
-        $response->assertOk();
-        $response->assertSee('Confirm Return');
-        $response->assertSee('Clean Code');
-        $response->assertSee('Robert C. Martin');
-        $response->assertSee('BOOK001');
+        $response->assertRedirect(route('kiosk.return'));
+        $response->assertSessionHas('status');
+
+        $cart = app(KioskCartService::class);
+        $this->assertTrue($cart->has('return', 'BOOK001'));
     }
 
-    public function test_confirming_return_does_not_falsely_report_success(): void
+    public function test_clear_return_cart_removes_all_items(): void
     {
-        $borrowedBooks = [
+        $this->createPatronSession();
+
+        $cart = app(KioskCartService::class);
+        $cart->add('return', [
+            'item_id' => 501,
+            'barcode' => 'BOOK001',
+            'title' => 'Clean Code',
+            'author' => 'Robert C. Martin',
+        ]);
+
+        $response = $this->post(route('kiosk.return.clear'));
+
+        $response->assertRedirect(route('kiosk.return'));
+        $this->assertEmpty($cart->items('return'));
+    }
+
+    public function test_confirm_return_commits_items_and_redirects_to_success(): void
+    {
+        $this->createPatronSession([
             [
                 'title' => 'Clean Code',
                 'author' => 'Robert C. Martin',
                 'barcode' => 'BOOK001',
-                'due' => '2026-10-15T23:59:59Z',
                 'raw' => ['item_id' => 501],
             ],
-        ];
-
-        $this->createPatronSession($borrowedBooks);
-
-        session([
-            'kiosk_return_item' => [
-                'item_id' => 501,
-                'barcode' => 'BOOK001',
-                'biblio' => ['title' => 'Clean Code'],
-            ],
         ]);
 
-        $response = $this->post(route('kiosk.return.confirm.store'));
+        $cart = app(KioskCartService::class);
+        $cart->add('return', [
+            'item_id' => 501,
+            'barcode' => 'BOOK001',
+            'title' => 'Clean Code',
+            'author' => 'Robert C. Martin',
+        ]);
+        $token = $cart->token('return');
 
-        // Fails gracefully with clear message because Koha checkin transport is not configured yet
-        $response->assertRedirect(route('kiosk.return'));
-        $response->assertSessionHasErrors([
-            'barcode' => 'Return processing is not connected to Koha yet. The book was not marked as returned.',
+        $mockKoha = $this->createMock(KohaService::class);
+        $mockKoha->expects($this->once())
+            ->method('checkinItem')
+            ->with(501, 'BOOK001')
+            ->willReturn(['item_id' => 501, 'status' => 'returned']);
+
+        $mockKoha->expects($this->once())
+            ->method('getPatronCheckouts')
+            ->with(10021)
+            ->willReturn([]);
+
+        $this->app->instance(KohaService::class, $mockKoha);
+
+        $response = $this->post(route('kiosk.return.confirm.store'), [
+            'cart_token' => $token,
         ]);
 
-        // Verify book is NOT removed from patron session
-        $this->assertCount(1, session('kiosk_patron')['borrowed_books']);
-    }
-
-    public function test_cancellation_returns_to_dashboard(): void
-    {
-        $this->createPatronSession();
-        session(['kiosk_return_item' => ['item_id' => 501]]);
-
-        $response = $this->get(route('kiosk.return.cancel'));
-
-        $response->assertRedirect(route('kiosk.dashboard'));
-        $this->assertFalse(session()->has('kiosk_return_item'));
+        $response->assertRedirect(route('kiosk.success'));
+        $this->assertTrue(Session::has('kiosk_last_receipt'));
     }
 }

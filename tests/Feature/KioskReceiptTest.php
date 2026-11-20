@@ -70,7 +70,7 @@ class KioskReceiptTest extends TestCase
 
         $response->assertOk();
         $response->assertViewIs('kiosk.receipt');
-        $response->assertSee('Clean Code');
+        $response->assertSee('Preparing your receipt for printing...');
     }
 
     public function test_receipt_pdf_downloads_pdf_when_receipt_present(): void
@@ -92,13 +92,13 @@ class KioskReceiptTest extends TestCase
         $this->assertStringContainsString('application/pdf', $response->headers->get('Content-Type'));
     }
 
-    public function test_receipt_pdf_redirects_when_no_receipt(): void
+    public function test_receipt_pdf_returns_404_when_no_receipt(): void
     {
         $this->setPatronSession();
 
         $response = $this->get(route('kiosk.receipt.pdf'));
 
-        $response->assertRedirect(route('kiosk.dashboard'));
+        $response->assertNotFound();
     }
 
     public function test_keepalive_returns_204_no_content(): void

@@ -3,8 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\ActivityLog;
+use App\Models\PatronVerificationCapture;
+use App\Services\KioskCartService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Session;
 use Tests\TestCase;
 
 class ActivityLogTest extends TestCase
@@ -112,6 +115,15 @@ class ActivityLogTest extends TestCase
             '*/api/v1/checkouts*' => Http::response([], 200),
         ]);
 
+        $capture = PatronVerificationCapture::create([
+            'patron_id' => '10021',
+            'cardnumber' => 'STU001',
+            'action' => 'borrow',
+            'photo_path' => 'captures/1.jpg',
+            'face_detected' => true,
+        ]);
+        Session::put('kiosk_verification_capture_borrow', $capture->id);
+
         $this->withSession([
             'kiosk_patron' => [
                 'patron_id' => '10021',
@@ -119,16 +131,22 @@ class ActivityLogTest extends TestCase
                 'name' => 'Arif Hasan',
                 'borrowed_books' => [],
             ],
-            'kiosk_borrow_item' => [
-                'item_id' => 501,
-                'barcode' => 'BOOK001',
-                'title' => 'Laravel Up & Running',
-            ],
+            'kiosk_last_activity' => now(),
         ]);
 
-        $response = $this->post(route('kiosk.borrow.confirm.store'));
+        $cart = app(KioskCartService::class);
+        $cart->add('borrow', [
+            'item_id' => 501,
+            'barcode' => 'BOOK001',
+            'title' => 'Laravel Up & Running',
+        ]);
+        $token = $cart->token('borrow');
 
-        $response->assertRedirect(route('kiosk.dashboard'));
+        $response = $this->post(route('kiosk.borrow.confirm.store'), [
+            'cart_token' => $token,
+        ]);
+
+        $response->assertRedirect(route('kiosk.success'));
 
         $this->assertDatabaseHas('activity_logs', [
             'action' => 'borrow',
@@ -136,7 +154,7 @@ class ActivityLogTest extends TestCase
             'patron_id' => '10021',
             'barcode' => 'BOOK001',
             'item_id' => 501,
-            'message' => 'Book borrowed successfully.',
+            'message' => 'Borrowed: Laravel Up & Running',
         ]);
     }
 
@@ -149,7 +167,17 @@ class ActivityLogTest extends TestCase
             '*/api/v1/checkouts' => Http::response([
                 'error' => 'Item is not available for checkout',
             ], 403),
+            '*/api/v1/checkouts*' => Http::response([], 200),
         ]);
+
+        $capture = PatronVerificationCapture::create([
+            'patron_id' => '10021',
+            'cardnumber' => 'STU001',
+            'action' => 'borrow',
+            'photo_path' => 'captures/1.jpg',
+            'face_detected' => true,
+        ]);
+        Session::put('kiosk_verification_capture_borrow', $capture->id);
 
         $this->withSession([
             'kiosk_patron' => [
@@ -158,16 +186,22 @@ class ActivityLogTest extends TestCase
                 'name' => 'Arif Hasan',
                 'borrowed_books' => [],
             ],
-            'kiosk_borrow_item' => [
-                'item_id' => 501,
-                'barcode' => 'BOOK001',
-                'title' => 'Laravel Up & Running',
-            ],
+            'kiosk_last_activity' => now(),
         ]);
 
-        $response = $this->post(route('kiosk.borrow.confirm.store'));
+        $cart = app(KioskCartService::class);
+        $cart->add('borrow', [
+            'item_id' => 501,
+            'barcode' => 'BOOK001',
+            'title' => 'Laravel Up & Running',
+        ]);
+        $token = $cart->token('borrow');
 
-        $response->assertRedirect(route('kiosk.borrow'));
+        $response = $this->post(route('kiosk.borrow.confirm.store'), [
+            'cart_token' => $token,
+        ]);
+
+        $response->assertRedirect(route('kiosk.success'));
 
         $this->assertDatabaseHas('activity_logs', [
             'action' => 'borrow',
@@ -175,11 +209,18 @@ class ActivityLogTest extends TestCase
             'patron_id' => '10021',
             'barcode' => 'BOOK001',
             'item_id' => 501,
+            'message' => 'Unable to borrow this book. Please try again.',
         ]);
     }
 
     public function test_return_attempt_while_checkin_transport_is_unavailable_creates_failed_activity_log(): void
     {
+        Http::fake([
+            '*/api/v1/oauth/token' => Http::response(['access_token' => 'fake-token-123'], 200),
+            '*/api/v1/checkins' => Http::response(['error' => 'Transport unavailable'], 500),
+            '*/api/v1/checkouts*' => Http::response([], 200),
+        ]);
+
         $this->withSession([
             'kiosk_patron' => [
                 'patron_id' => '10021',
@@ -193,16 +234,22 @@ class ActivityLogTest extends TestCase
                     ],
                 ],
             ],
-            'kiosk_return_item' => [
-                'item_id' => 501,
-                'barcode' => 'BOOK001',
-                'biblio' => ['title' => 'Clean Code'],
-            ],
+            'kiosk_last_activity' => now(),
         ]);
 
-        $response = $this->post(route('kiosk.return.confirm.store'));
+        $cart = app(KioskCartService::class);
+        $cart->add('return', [
+            'item_id' => 501,
+            'barcode' => 'BOOK001',
+            'title' => 'Clean Code',
+        ]);
+        $token = $cart->token('return');
 
-        $response->assertRedirect(route('kiosk.return'));
+        $response = $this->post(route('kiosk.return.confirm.store'), [
+            'cart_token' => $token,
+        ]);
+
+        $response->assertRedirect(route('kiosk.success'));
 
         $this->assertDatabaseHas('activity_logs', [
             'action' => 'return',
@@ -210,7 +257,7 @@ class ActivityLogTest extends TestCase
             'patron_id' => '10021',
             'barcode' => 'BOOK001',
             'item_id' => 501,
-            'message' => 'Return processing is not connected to Koha yet.',
+            'message' => 'This book could not be returned. Please ask a librarian.',
         ]);
     }
 
@@ -220,7 +267,7 @@ class ActivityLogTest extends TestCase
             'patron_id' => '10021',
             'action' => 'borrow',
             'status' => 'success',
-            'message' => 'Book borrowed successfully.',
+            'message' => 'Borrowed: Laravel Up & Running',
             'barcode' => 'BOOK001',
         ]);
 
@@ -232,13 +279,14 @@ class ActivityLogTest extends TestCase
                 'status' => 'Active',
                 'borrowed_books' => [],
             ],
+            'kiosk_last_activity' => now(),
         ]);
 
         $response = $this->get(route('kiosk.dashboard'));
 
         $response->assertOk();
-        $response->assertSee('Book borrowed successfully.');
-        $response->assertSee('success');
+        $response->assertSee('Borrowed successfully');
+        $response->assertSee('Laravel Up & Running');
     }
 
     public function test_dashboard_does_not_display_another_patrons_activities(): void
@@ -254,7 +302,7 @@ class ActivityLogTest extends TestCase
             'patron_id' => '10021',
             'action' => 'borrow',
             'status' => 'success',
-            'message' => 'Visible Activity Patron A',
+            'message' => 'Borrowed: Visible Activity Patron A',
         ]);
 
         $this->withSession([
@@ -280,9 +328,9 @@ class ActivityLogTest extends TestCase
         for ($i = 1; $i <= 15; $i++) {
             $log = ActivityLog::create([
                 'patron_id' => '10021',
-                'action' => 'rfid_scan',
+                'action' => 'borrow',
                 'status' => 'success',
-                'message' => "Activity Log #{$i}",
+                'message' => "Borrowed: Activity Log #{$i}",
             ]);
             $log->timestamps = false;
             $log->created_at = $baseTime->copy()->addMinutes($i);
@@ -303,7 +351,7 @@ class ActivityLogTest extends TestCase
 
         $response->assertOk();
         $response->assertViewHas('recentActivities', function ($activities) {
-            return count($activities) === 10 && $activities->first()->message === 'Activity Log #15';
+            return count($activities) === 10 && str_contains($activities->first()->message, 'Activity Log #15');
         });
     }
 }

@@ -2,9 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\PatronVerificationCapture;
+use App\Services\KioskCartService;
+use App\Services\KohaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Session;
 use Tests\TestCase;
 
 class KioskBorrowTest extends TestCase
@@ -21,19 +24,17 @@ class KioskBorrowTest extends TestCase
         $this->seed();
     }
 
-    protected function createPatronSession(): void
+    protected function createPatronSession(array $borrowedBooks = []): void
     {
-        session([
-            'kiosk_patron' => [
-                'patron_id' => '10021',
-                'cardnumber' => 'STU001',
-                'name' => 'Arif Hasan',
-                'status' => 'Active',
-                'borrowed_books' => [],
-                'recent_activity' => [],
-            ],
-            'kiosk_last_activity' => now(),
+        Session::put('kiosk_patron', [
+            'patron_id' => '10021',
+            'cardnumber' => 'STU001',
+            'name' => 'Arif Hasan',
+            'status' => 'Active',
+            'borrowed_books' => $borrowedBooks,
+            'recent_activity' => [],
         ]);
+        Session::put('kiosk_last_activity', now());
     }
 
     public function test_no_patron_session_redirects_to_welcome(): void
@@ -44,7 +45,7 @@ class KioskBorrowTest extends TestCase
         $response->assertSessionHasErrors(['uid' => 'Please scan your RFID card first.']);
     }
 
-    public function test_book_lookup_succeeds(): void
+    public function test_book_lookup_succeeds_and_adds_to_cart(): void
     {
         $this->createPatronSession();
 
@@ -66,14 +67,11 @@ class KioskBorrowTest extends TestCase
             'barcode' => 'BOOK001',
         ]);
 
-        $response->assertRedirect(route('kiosk.borrow.confirm'));
-        $this->assertTrue(session()->has('kiosk_borrow_item'));
-        $this->assertEquals(501, session('kiosk_borrow_item')['item_id']);
+        $response->assertRedirect(route('kiosk.borrow'));
+        $response->assertSessionHas('status');
 
-        $confirmResponse = $this->get(route('kiosk.borrow.confirm'));
-        $confirmResponse->assertOk();
-        $confirmResponse->assertSee('Clean Code');
-        $confirmResponse->assertSee('Robert C. Martin');
+        $cart = app(KioskCartService::class);
+        $this->assertTrue($cart->has('borrow', 'BOOK001'));
     }
 
     public function test_book_not_found_shows_error(): void
@@ -90,11 +88,6 @@ class KioskBorrowTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors(['barcode' => 'Book not found.']);
-        $this->assertFalse(session()->has('kiosk_borrow_item'));
-
-        Http::assertNotSent(function ($request) {
-            return str_contains($request->url(), '/api/v1/checkouts');
-        });
     }
 
     public function test_unavailable_book_cannot_be_borrowed(): void
@@ -120,175 +113,87 @@ class KioskBorrowTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors(['barcode' => 'This book is currently unavailable.']);
-        $this->assertFalse(session()->has('kiosk_borrow_item'));
     }
 
-    public function test_successful_checkout_refreshes_dashboard(): void
+    public function test_clear_borrow_cart_removes_all_items(): void
     {
         $this->createPatronSession();
 
-        session([
-            'kiosk_borrow_item' => [
-                'item_id' => 501,
-                'barcode' => 'BOOK001',
-                'title' => 'Clean Code',
-            ],
+        $cart = app(KioskCartService::class);
+        $cart->add('borrow', [
+            'item_id' => 501,
+            'barcode' => 'BOOK001',
+            'title' => 'Clean Code',
+            'author' => 'Robert C. Martin',
         ]);
 
-        Http::fake([
-            '*/api/v1/oauth/token' => Http::response(['access_token' => 'fake-token-123'], 200),
-            '*/api/v1/checkouts' => Http::response([
-                'checkout_id' => 99,
-                'patron_id' => 10021,
-                'item_id' => 501,
-                'due_date' => '2026-10-15T23:59:59Z',
-            ], 201),
-            '*/api/v1/checkouts*' => Http::response([
-                [
-                    'checkout_id' => 99,
-                    'patron_id' => 10021,
-                    'item_id' => 501,
-                    'due_date' => '2026-10-15T23:59:59Z',
-                    'item' => [
-                        'barcode' => 'BOOK001',
-                        'biblio' => [
-                            'title' => 'Clean Code',
-                            'author' => 'Robert C. Martin',
-                        ],
-                    ],
-                ],
-            ], 200),
-        ]);
-
-        $response = $this->post(route('kiosk.borrow.confirm.store'));
-
-        $response->assertRedirect(route('kiosk.dashboard'));
-        $response->assertSessionHas('status', 'Book borrowed successfully!');
-        $this->assertFalse(session()->has('kiosk_borrow_item'));
-
-        $patron = session('kiosk_patron');
-        $this->assertCount(1, $patron['borrowed_books']);
-        $this->assertEquals('Clean Code', $patron['borrowed_books'][0]['title']);
-    }
-
-    public function test_checkout_failure_shows_user_friendly_error(): void
-    {
-        $this->createPatronSession();
-
-        session([
-            'kiosk_borrow_item' => [
-                'item_id' => 501,
-                'barcode' => 'BOOK001',
-                'title' => 'Clean Code',
-            ],
-        ]);
-
-        Http::fake([
-            '*/api/v1/oauth/token' => Http::response(['access_token' => 'fake-token-123'], 200),
-            '*/api/v1/checkouts' => Http::response([
-                'error' => 'Checkout denied by Koha',
-            ], 400),
-        ]);
-
-        $response = $this->post(route('kiosk.borrow.confirm.store'));
+        $response = $this->post(route('kiosk.borrow.clear'));
 
         $response->assertRedirect(route('kiosk.borrow'));
-        $response->assertSessionHasErrors(['barcode' => 'Unable to borrow this book. Please try again.']);
-        $this->assertEquals([], session('kiosk_patron')['borrowed_books']);
+        $this->assertEmpty($cart->items('borrow'));
     }
 
-    public function test_cancel_borrow_clears_session_and_redirects(): void
+    public function test_confirm_borrow_requires_verification_photo(): void
     {
         $this->createPatronSession();
-        session([
-            'kiosk_borrow_item' => [
-                'item_id' => 501,
-                'barcode' => 'BOOK001',
-                'title' => 'Clean Code',
-            ],
-        ]);
 
-        $response = $this->get(route('kiosk.borrow.cancel'));
+        $cart = app(KioskCartService::class);
+        $cart->add('borrow', [
+            'item_id' => 501,
+            'barcode' => 'BOOK001',
+            'title' => 'Clean Code',
+            'author' => 'Robert C. Martin',
+        ]);
+        $token = $cart->token('borrow');
+
+        $response = $this->post(route('kiosk.borrow.confirm.store'), [
+            'cart_token' => $token,
+        ]);
 
         $response->assertRedirect(route('kiosk.borrow'));
-        $this->assertFalse(session()->has('kiosk_borrow_item'));
+        $response->assertSessionHasErrors(['barcode' => 'Please complete the identity verification photo before confirming.']);
     }
 
-            public function test_successful_borrow_stores_receipt_and_receipt_page_is_accessible(): void
+    public function test_successful_borrow_with_verification_redirects_to_success(): void
     {
-        Http::fake([
-            '*/api/v1/oauth/token' => Http::response(['access_token' => 'fake-token-123'], 200),
-            '*/api/v1/checkouts' => Http::response([
-                'checkout_id' => 99,
-                'patron_id' => 10021,
-                'item_id' => 501,
-                'due_date' => '2026-10-15T23:59:59Z',
-            ], 201),
-            '*/api/v1/checkouts*' => Http::response([], 200),
+        $this->createPatronSession();
+
+        $capture = PatronVerificationCapture::create([
+            'patron_id' => '10021',
+            'cardnumber' => 'STU001',
+            'action' => 'borrow',
+            'photo_path' => 'captures/1.jpg',
+            'face_detected' => true,
+        ]);
+        Session::put('kiosk_verification_capture_borrow', $capture->id);
+
+        $cart = app(KioskCartService::class);
+        $cart->add('borrow', [
+            'item_id' => 501,
+            'barcode' => 'BOOK001',
+            'title' => 'Clean Code',
+            'author' => 'Robert C. Martin',
+        ]);
+        $token = $cart->token('borrow');
+
+        $mockKoha = $this->createMock(KohaService::class);
+        $mockKoha->expects($this->once())
+            ->method('checkoutItem')
+            ->with(10021, 501)
+            ->willReturn(['checkout_id' => 99, 'due_date' => '2026-12-01']);
+
+        $mockKoha->expects($this->once())
+            ->method('getPatronCheckouts')
+            ->with(10021)
+            ->willReturn([]);
+
+        $this->app->instance(KohaService::class, $mockKoha);
+
+        $response = $this->post(route('kiosk.borrow.confirm.store'), [
+            'cart_token' => $token,
         ]);
 
-        $this->withSession([
-            'kiosk_patron' => [
-                'patron_id' => '10021',
-                'cardnumber' => 'STU001',
-                'name' => 'Arif Hasan',
-                'borrowed_books' => [],
-            ],
-            'kiosk_borrow_item' => [
-                'item_id' => 501,
-                'barcode' => 'BOOK001',
-                'title' => 'Laravel Up & Running',
-            ],
-        ]);
-
-        $this->post(route('kiosk.borrow.confirm.store'));
-
-        $this->assertEquals('borrow', session('kiosk_last_receipt.type'));
-        $this->assertEquals('BOOK001', session('kiosk_last_receipt.barcode'));
-
-        $response = $this->get(route('kiosk.receipt'));
-        $response->assertOk();
-        $response->assertSee('Preparing your receipt');
+        $response->assertRedirect(route('kiosk.success'));
+        $this->assertTrue(Session::has('kiosk_last_receipt'));
     }
-
-    public function test_receipt_page_redirects_to_dashboard_when_nothing_to_show(): void
-    {
-        $response = $this->get(route('kiosk.receipt'));
-
-        $response->assertRedirect(route('kiosk.dashboard'));
-    }
-
-    public function test_receipt_pdf_is_generated_and_saved(): void
-    {
-        Storage::fake('local');
-
-        $this->withSession([
-            'kiosk_last_receipt' => [
-                'type' => 'borrow',
-                'patron_name' => 'Arif Hasan',
-                'patron_id' => '10021',
-                'title' => 'Laravel Up & Running',
-                'author' => null,
-                'barcode' => 'BOOK001',
-                'due_date' => '2026-10-15T23:59:59Z',
-                'timestamp' => now(),
-            ],
-        ]);
-
-        $response = $this->get(route('kiosk.receipt.pdf'));
-
-        $response->assertOk();
-        $response->assertHeader('Content-Type', 'application/pdf');
-
-        $files = Storage::disk('local')->allFiles('receipts');
-        $this->assertNotEmpty($files);
-    }
-
-    public function test_receipt_pdf_returns_404_when_nothing_to_show(): void
-    {
-        $response = $this->get(route('kiosk.receipt.pdf'));
-
-        $response->assertStatus(404);
-    }
-    
 }

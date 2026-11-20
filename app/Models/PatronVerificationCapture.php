@@ -17,6 +17,14 @@ class PatronVerificationCapture extends Model
         'barcode',
         'photo_path',
         'face_detected',
+        'match_status',
+        'match_score',
+        'matched_at',
+        'review_status',
+        'reviewed_by',
+        'reviewed_at',
+        'review_note',
+        'transaction_items',
     ];
 
     protected function casts(): array

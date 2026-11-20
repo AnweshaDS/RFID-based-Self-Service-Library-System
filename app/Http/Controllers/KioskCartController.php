@@ -259,10 +259,10 @@ class KioskCartController extends Controller
             'patron_id' => (string) ($patron['patron_id'] ?? ''),
             'items' => $results,
             // single-book keys kept so the current receipt page keeps working for now
-            'title' => $first['title'],
-            'author' => $first['author'],
-            'barcode' => $first['barcode'],
-            'due_date' => $first['due_date'],
+            'title' => $first['title'] ?? 'Unknown title',
+            'author' => $first['author'] ?? null,
+            'barcode' => $first['barcode'] ?? null,
+            'due_date' => $first['due_date'] ?? null,
             'timestamp' => now(),
         ]);
     }

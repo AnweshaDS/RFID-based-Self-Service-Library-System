@@ -176,6 +176,7 @@ class SupportClassesTest extends TestCase
             'action' => 'borrow',
             'match_status' => 'mismatch',
             'photo_path' => 'p1.jpg',
+            'face_detected' => true,
         ]);
 
         $reviewedOk = PatronVerificationCapture::create([
@@ -184,6 +185,7 @@ class SupportClassesTest extends TestCase
             'match_status' => 'mismatch',
             'review_status' => 'ok',
             'photo_path' => 'p2.jpg',
+            'face_detected' => true,
         ]);
 
         $this->assertEquals(1, VerificationPhotos::pendingWarningCount());

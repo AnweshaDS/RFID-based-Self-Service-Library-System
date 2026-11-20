@@ -18,7 +18,11 @@
         </include>
     </source>
     <php>
+        <env name="APP_KEY" value="base64:2fl+Ktvkfl+Fuz4Qp/1SeEuLTUMgqT567LCUnUShOZw="/>
         <env name="APP_ENV" value="testing"/>
+        <env name="KOHA_BASE_URL" value="http://kohadev.myDNSname.org:8082"/>
+        <env name="KOHA_CLIENT_ID" value="test-client-id"/>
+        <env name="KOHA_CLIENT_SECRET" value="test-client-secret"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>

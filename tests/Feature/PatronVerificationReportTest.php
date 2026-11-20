@@ -58,7 +58,7 @@ class PatronVerificationReportTest extends TestCase
 
         $response->assertOk();
         $response->assertViewIs('patron-verification.report');
-        $response->assertViewHasAll(['rows', 'counts', 'from', 'to', 'scope', 'onlyOpen']);
+        $response->assertViewHasAll(['from', 'to', 'scopes', 'mainScopes', 'defaultChoice', 'counts', 'summary', 'maxDays']);
     }
 
     public function test_report_validates_date_range_not_in_reverse(): void
@@ -107,7 +107,7 @@ class PatronVerificationReportTest extends TestCase
 
         $response->assertOk();
         $this->assertStringContainsString('text/csv', $response->headers->get('Content-Type'));
-        $this->assertStringContainsString('attachment; filename="patron-verification-', $response->headers->get('Content-Disposition'));
+        $this->assertStringContainsString('verification-report-', $response->headers->get('Content-Disposition'));
     }
 
     public function test_printable_report_renders_print_view(): void
@@ -118,6 +118,6 @@ class PatronVerificationReportTest extends TestCase
 
         $response->assertOk();
         $response->assertViewIs('patron-verification.report-print');
-        $response->assertViewHasAll(['rows', 'counts', 'from', 'to', 'scope']);
+        $response->assertViewHasAll(['entries', 'summary', 'from', 'to', 'scope']);
     }
 }

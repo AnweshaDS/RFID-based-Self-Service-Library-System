@@ -56,6 +56,13 @@ class AuthenticationTest extends TestCase
         $this->useFakeKoha();
         $this->fakeValidKohaPatron();
 
+        User::factory()->create([
+            'name' => 'Arif Hasan',
+            'koha_cardnumber' => 'STU001',
+            'koha_patron_id' => '42',
+            'password' => \Illuminate\Support\Facades\Hash::make('correct-koha-password'),
+        ]);
+
         $response = $this->post('/login', [
             'identifier' => 'STU001',
             'password' => 'correct-koha-password',
