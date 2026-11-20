@@ -21,6 +21,8 @@
 /vendor
 /face-service/.venv
 /face-service/models
+__pycache__/
+*.pyc
 Homestead.json
 Homestead.yaml
 Thumbs.db
