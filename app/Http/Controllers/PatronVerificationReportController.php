@@ -23,6 +23,11 @@ class PatronVerificationReportController extends Controller
     private const MAX_DAYS = 31;
 
     private const DEFAULT_SCOPE = 'all_warnings';
+        /** The choices shown first when a report is opened. The rest are under More choices. */
+    private const MAIN_SCOPES = ['all', 'system_verified', 'staff_verified', 'needs_review'];
+
+    /** The choice that is selected when the panel opens. */
+    private const DEFAULT_CHOICE = 'needs_review';
 
     /** What a report can include: key => [label, short explanation]. */
     private const SCOPES = [
@@ -223,17 +228,25 @@ class PatronVerificationReportController extends Controller
         $this->ensureAccess($request);
 
         [$start, $end, $from, $to] = $this->range($request);
-        $scope = $this->scope($request);
 
-        $rows = $this->scopeQuery($start, $end, $scope)
+        // The numbers on the page cover every photo in the period. The choice of what to
+        // include is made when the report or the CSV is opened.
+        $rows = $this->scopeQuery($start, $end, 'all')
             ->get(['id', 'match_status', 'review_status', 'face_detected']);
+
+        $counts = [];
+
+        foreach (array_keys(self::SCOPES) as $key) {
+            $counts[$key] = $this->scopeQuery($start, $end, $key)->count();
+        }
 
         return view('patron-verification.report', [
             'from' => $from,
             'to' => $to,
-            'scope' => $scope,
             'scopes' => self::SCOPES,
-            'scopeLabel' => self::SCOPES[$scope][0],
+            'mainScopes' => self::MAIN_SCOPES,
+            'defaultChoice' => self::DEFAULT_CHOICE,
+            'counts' => $counts,
             'summary' => $this->summary($rows),
             'maxDays' => self::MAX_DAYS,
         ]);
