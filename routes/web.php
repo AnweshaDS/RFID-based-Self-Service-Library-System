@@ -10,7 +10,7 @@ use App\Http\Controllers\KioskRenewalController;
 
 Route::prefix('kiosk')->name('kiosk.')->group(function () {
     Route::get('/', [KioskController::class, 'welcome'])->name('welcome');
-    Route::post('/enter', [KioskController::class, 'enterByCardnumber'])->name('enter');
+    Route::post('/enter', [KioskController::class, 'enterByCardnumber'])->middleware('throttle:30,1')->name('enter');
     Route::middleware('kiosk.timeout')->group(function () {
         Route::post('/renew', [KioskRenewalController::class, 'renew'])->middleware('throttle:20,1')->name('renew');
         Route::get('/receipt/view', [KioskController::class, 'showReceiptView'])->name('receipt.view');

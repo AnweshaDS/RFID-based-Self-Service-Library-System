@@ -127,13 +127,28 @@ public function showReceiptView()
 
     return view('kiosk.receipt-view', ['receipt' => $receipt]);
 }
-    public function enterByCardnumber(Request $request)
+
+public function enterByCardnumber(Request $request)
 {
     $request->validate(['cardnumber' => 'required|string']);
 
     $cardnumber = trim($request->input('cardnumber'));
-        // Set by scan() only for real tag taps, so it cannot be faked from the browser
-    $loginAction = Cache::pull('kiosk.rfid_scan.' . $cardnumber) ? 'rfid_login' : 'manual_entry';
+    // Set by scan() only for real tag taps, so it cannot be faked from the browser
+    $scanned = (bool) Cache::pull('kiosk.rfid_scan.' . $cardnumber);
+
+    if (! $scanned && ! config('kiosk.allow_manual_entry')) {
+        $this->activityLogService->log(
+            action: 'manual_entry',
+            status: 'failed',
+            message: 'Manual card number entry is switched off.'
+        );
+
+        return back()->withErrors([
+            'cardnumber' => 'Please tap your card on the reader.',
+        ]);
+    }
+
+    $loginAction = $scanned ? 'rfid_login' : 'manual_entry';
 
     try {
         $kohaPatron = $this->kohaService->getPatronByCardnumber($cardnumber);

@@ -1,7 +1,11 @@
 <x-kiosk-layout>
     <div class="rounded-2xl bg-paper/5 p-10 text-center backdrop-blur">
         <p class="font-display text-4xl">Welcome</p>
-        <p class="mt-3 text-paper/70">Tap your card or enter your student card number to begin.</p>
+        @if (config('kiosk.allow_manual_entry'))
+            <p class="mt-3 text-paper/70">Tap your card or enter your student card number to begin.</p>
+        @else
+            <p class="mt-3 text-paper/70">Tap your card on the reader to begin.</p>
+        @endif
 
         <div class="mx-auto mt-8 flex h-28 w-28 items-center justify-center rounded-full border-2 border-signal-amber/60">
             <svg class="h-12 w-12 text-signal-amber" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -16,7 +20,11 @@
 
         <p id="scan-error" class="mt-6 rounded-lg bg-red-500/10 px-4 py-2.5 text-sm text-red-300" style="display:none;"></p>
         <p id="reader-offline" style="display:none; margin-top:24px; font-size:13px; color:#fbbf24;">
-            Card reader is offline. You can still enter your card number below.
+            @if (config('kiosk.allow_manual_entry'))
+                Card reader is offline. You can still enter your card number below.
+            @else
+                Card reader is offline. Please ask a librarian for help.
+            @endif
         </p>
 
         @if (session('status'))
@@ -24,6 +32,7 @@
         @endif
     </div>
 
+    @if (config('kiosk.allow_manual_entry'))
     <div style="margin-top:24px; border-radius:16px; border:1px solid rgba(246,247,245,0.2); background:rgba(246,247,245,0.05); padding:24px;">
         <p style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:rgba(246,247,245,0.5); margin:0 0 12px 0;">Enter Student Card Number</p>
         <form id="enter-form" method="POST" action="{{ route('kiosk.enter') }}" style="display:flex; gap:12px;" onsubmit="document.getElementById('loading').style.display = 'flex';">
@@ -37,6 +46,13 @@
             </button>
         </form>
     </div>
+    @else
+        {{-- Manual typing is off. The scan script below still fills this hidden form and sends it. --}}
+        <form id="enter-form" method="POST" action="{{ route('kiosk.enter') }}">
+            @csrf
+            <input type="hidden" name="cardnumber" id="cardnumber-input" value="">
+        </form>
+    @endif
 <script>
     let submitting = false;
 
@@ -105,4 +121,4 @@
         </div>
     </div>
     <style>@keyframes kiosk-spin { to { transform: rotate(360deg); } }</style>
-    </x-kiosk-layout>
+</x-kiosk-layout>

@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\KioskController;
 
 Route::post('/kiosk/scan', [KioskController::class, 'scan']);
-Route::get('/kiosk/poll', [KioskController::class, 'pollScan']);
+Route::get('/kiosk/poll', [KioskController::class, 'pollScan'])->middleware('kiosk.device');
 Route::post('/kiosk/reader-status', [KioskController::class, 'readerStatus']);
 Route::get('/kiosk/reader-status', [KioskController::class, 'readerOnline']);
 

@@ -26,9 +26,8 @@ return [
     // Photos that still need review, or were flagged, are kept this many days instead
     'flagged_retention_days' => (int) env('KIOSK_FLAGGED_RETENTION_DAYS', 365),
 
-        // Kiosk photos shown on a patron card before "Show all"
+    // Kiosk photos shown on a patron card before "Show all"
     'photos_per_card' => 10,
-
 
     // Face matching: the Python tool in the face-service folder
     'face_python' => env('FACE_PYTHON', base_path('face-service/.venv/Scripts/python.exe')),
@@ -41,5 +40,17 @@ return [
     // Which laptop/kiosk this is. Set per machine in .env, never committed.
     'id' => env('KIOSK_ID', 'unknown'),
     'name' => env('KIOSK_NAME', env('KIOSK_ID', 'Unknown kiosk')),
+
+    // true: a patron may also type a card number on the welcome page (development).
+    // false: only a real card tap can log a patron in (set this before deployment).
+    'allow_manual_entry' => (bool) env('KIOSK_ALLOW_MANUAL_ENTRY', true),
+
+    // Addresses allowed to call /api/kiosk/poll, which hands out the card number that was
+    // just tapped. The kiosk browser runs on the same computer as the server, so loopback.
+    // Comma separated in .env, for example KIOSK_ALLOWED_IPS=127.0.0.1,::1
+    'allowed_ips' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('KIOSK_ALLOWED_IPS', '127.0.0.1,::1,::ffff:127.0.0.1'))
+    ))),
 
 ];
