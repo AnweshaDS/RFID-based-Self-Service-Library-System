@@ -43,9 +43,6 @@ Route::middleware(['auth', 'permission:tasks.assign'])->prefix('tasks')->name('t
     Route::get('/', [\App\Http\Controllers\TaskController::class, 'index'])->name('index');
     Route::get('/create', [\App\Http\Controllers\TaskController::class, 'create'])->name('create');
     Route::post('/', [\App\Http\Controllers\TaskController::class, 'store'])->name('store');
-    Route::get('/patron-verification', [\App\Http\Controllers\PatronVerificationController::class, 'show'])->name('patron-verification');
-    Route::post('/patron-verification', [\App\Http\Controllers\PatronVerificationController::class, 'search'])->name('patron-verification.search');
-    Route::get('/patron-verification/{patronId}/photo', [\App\Http\Controllers\PatronVerificationController::class, 'photo'])->name('patron-verification.photo');
 });
 
 Route::middleware('auth')->group(function () {
@@ -68,10 +65,13 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware(['auth', 'role:Admin,Librarian'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [AdminController::class, 'index'])->name('dashboard');
+});
+
+// Settings are for Admin only (the menu already shows the Settings link to Admin only).
+Route::middleware(['auth', 'role:Admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::view('/settings', 'admin.settings')->name('settings');
     Route::get('/settings/photo-retention', [\App\Http\Controllers\RetentionSettingsController::class, 'edit'])->name('retention.edit');
     Route::put('/settings/photo-retention', [\App\Http\Controllers\RetentionSettingsController::class, 'update'])->name('retention.update');
-
 });
 
 Route::prefix('patron')->name('patron.')->group(function () {

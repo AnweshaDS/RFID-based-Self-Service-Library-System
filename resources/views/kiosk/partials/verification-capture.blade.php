@@ -24,10 +24,10 @@
     <input type="hidden" name="verification_capture_id" id="verification_capture_id" @if(!empty($confirmFormId)) form="{{ $confirmFormId }}" @endif>
 </div>
 
-<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script defer src="{{ asset('vendor/face-api/face-api.min.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const WEIGHTS_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js/weights';
+        const WEIGHTS_URL = '{{ asset('vendor/face-api/weights') }}';
         const POLL_MS = 800;
         const EXTENDED_AFTER_MS = 4000;   // try the stronger detector after this long without a face
         const MANUAL_AFTER_MS = 12000;    // offer the "Take photo anyway" button after this long

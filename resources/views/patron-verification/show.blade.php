@@ -79,7 +79,8 @@
         </div>
     </div>
 
-    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+    <script defer src="{{ asset('vendor/face-api/face-api.min.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const video = document.getElementById('liveFeed');
@@ -99,7 +100,7 @@
                     setTimeout(waitForFaceApi, 100);
                     return;
                 }
-                faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js/weights')
+                faceapi.nets.tinyFaceDetector.loadFromUri('{{ asset('vendor/face-api/weights') }}')
                     .then(() => {
                         modelReady = true;
                         modelStatus.textContent = 'Face detection ready.';

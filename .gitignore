@@ -26,3 +26,5 @@ __pycache__/
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+/.rnd
