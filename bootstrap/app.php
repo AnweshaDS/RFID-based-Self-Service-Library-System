@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'kiosk.timeout' => \App\Http\Middleware\KioskSessionTimeout::class,
+            'kiosk.device' => \App\Http\Middleware\RestrictToKioskDevice::class,
             'kiosk.token' => \App\Http\Middleware\VerifyKioskToken::class,
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
             'permission' => \App\Http\Middleware\EnsureUserHasPermission::class,
