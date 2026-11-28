@@ -12,16 +12,17 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-            $middleware->alias([
+        $middleware->alias([
             'kiosk.timeout' => \App\Http\Middleware\KioskSessionTimeout::class,
+            'kiosk.token' => \App\Http\Middleware\VerifyKioskToken::class,
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
             'permission' => \App\Http\Middleware\EnsureUserHasPermission::class,
         ]);
-$middleware->validateCsrfTokens(except: [
-    'oauth/token',
-    'oauth/introspect',
-    'oauth/revoke',
-]);
+        $middleware->validateCsrfTokens(except: [
+            'oauth/token',
+            'oauth/introspect',
+            'oauth/revoke',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
